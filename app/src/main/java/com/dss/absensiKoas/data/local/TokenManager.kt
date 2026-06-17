@@ -26,12 +26,27 @@ class TokenManager @Inject constructor(
         val USER_ID = longPreferencesKey("user_id")
         val USERNAME = stringPreferencesKey("username")
         val ROLE = stringPreferencesKey("role")
+        // Data OPD — disimpan saat login untuk validasi radius offline
+        val OPD_NAMA           = stringPreferencesKey("opd_nama")
+        val OPD_LAT_KANTOR     = floatPreferencesKey("opd_lat_kantor")
+        val OPD_LON_KANTOR     = floatPreferencesKey("opd_lon_kantor")
+        val OPD_RADIUS_ABSEN   = intPreferencesKey("opd_radius_absen")
     }
 
     val accessTokenFlow: Flow<String?> = context.dataStore.data.map { it[Keys.ACCESS_TOKEN] }
     val refreshTokenFlow: Flow<String?> = context.dataStore.data.map { it[Keys.REFRESH_TOKEN] }
     val usernameFlow: Flow<String?> = context.dataStore.data.map { it[Keys.USERNAME] }
     val roleFlow: Flow<String?> = context.dataStore.data.map { it[Keys.ROLE] }
+
+    // Data OPD untuk cek radius di sisi klien
+    suspend fun getOpdLatKantor(): Double? =
+        context.dataStore.data.map { it[Keys.OPD_LAT_KANTOR]?.toDouble() }.first()
+    suspend fun getOpdLonKantor(): Double? =
+        context.dataStore.data.map { it[Keys.OPD_LON_KANTOR]?.toDouble() }.first()
+    suspend fun getOpdRadiusAbsen(): Int =
+        context.dataStore.data.map { it[Keys.OPD_RADIUS_ABSEN] ?: 100 }.first()
+    suspend fun getOpdNama(): String? =
+        context.dataStore.data.map { it[Keys.OPD_NAMA] }.first()
 
     suspend fun getAccessToken(): String? = accessTokenFlow.first()
     suspend fun getRefreshToken(): String? = refreshTokenFlow.first()
@@ -41,7 +56,11 @@ class TokenManager @Inject constructor(
         refreshToken: String?,
         userId: Long,
         username: String,
-        role: String
+        role: String,
+        opdNama: String? = null,
+        opdLatKantor: Double? = null,
+        opdLonKantor: Double? = null,
+        opdRadiusAbsen: Int? = null
     ) {
         context.dataStore.edit { prefs ->
             prefs[Keys.ACCESS_TOKEN] = accessToken
@@ -49,6 +68,11 @@ class TokenManager @Inject constructor(
             prefs[Keys.USER_ID] = userId
             prefs[Keys.USERNAME] = username
             prefs[Keys.ROLE] = role
+            // Simpan data OPD jika tersedia
+            opdNama?.let       { prefs[Keys.OPD_NAMA]         = it }
+            opdLatKantor?.let  { prefs[Keys.OPD_LAT_KANTOR]   = it.toFloat() }
+            opdLonKantor?.let  { prefs[Keys.OPD_LON_KANTOR]   = it.toFloat() }
+            opdRadiusAbsen?.let{ prefs[Keys.OPD_RADIUS_ABSEN] = it }
         }
     }
 

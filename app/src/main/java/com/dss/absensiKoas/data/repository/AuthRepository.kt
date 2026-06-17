@@ -29,7 +29,8 @@ class AuthRepository @Inject constructor(
                     username = username,
                     password = password,
                     deviceId = deviceId,
-                    deviceInfo = deviceInfo
+                    deviceInfo = deviceInfo,
+
                 )
             )
 
@@ -40,7 +41,12 @@ class AuthRepository @Inject constructor(
                     refreshToken = data.refreshToken,
                     userId = data.user.id,
                     username = data.user.username,
-                    role = data.user.role
+                    role = data.user.role,
+                    // Simpan koordinat kantor & radius OPD untuk validasi radius offline
+                    opdNama        = data.user.opd?.nama,
+                    opdLatKantor   = data.user.opd?.latitudeKantor,
+                    opdLonKantor   = data.user.opd?.longitudeKantor,
+                    opdRadiusAbsen = data.user.opd?.radiusAbsen
                 )
                 emit(Resource.Success(data))
             } else {

@@ -21,6 +21,10 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "BASE_URL_DEBUG", "\"http://10.0.2.2:8080/\"")
         buildConfigField("String", "BASE_URL_RELEASE", "\"https://api.absensi.go.id/\"")
+
+        // Google Maps API Key - diambil dari local.properties (jangan commit API key!)
+        val mapsApiKey = project.findProperty("MAPS_API_KEY") as String? ?: "YOUR_MAPS_API_KEY_HERE"
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
     }
 
     buildTypes {
@@ -37,6 +41,11 @@ android {
                 "String",
                 "BASE_URL",
                 "\"https://api.absensi.go.id/\""
+            )
+            isMinifyEnabled = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
             )
         }
     }
@@ -98,6 +107,13 @@ dependencies {
 
     // Location Services - GPS + deteksi mock location
     implementation("com.google.android.gms:play-services-location:21.3.0")
+
+    // Google Maps Compose
+    implementation("com.google.maps.android:maps-compose:4.4.1")
+    implementation("com.google.android.gms:play-services-maps:18.2.0")
+
+    // Animasi tambahan (Lottie untuk splash & success animation)
+    implementation("com.airbnb.android:lottie-compose:6.4.1")
 
     // CameraX - ambil foto absen
     implementation("androidx.camera:camera-core:1.3.4")

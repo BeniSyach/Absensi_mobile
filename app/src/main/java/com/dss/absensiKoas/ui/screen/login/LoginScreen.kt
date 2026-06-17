@@ -1,25 +1,32 @@
 package com.dss.absensiKoas.ui.screen.login
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.*
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalance
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.*
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.graphics.*
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.input.*
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.*
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.dss.absensiKoas.R
+import com.dss.absensiKoas.ui.component.*
+import com.dss.absensiKoas.ui.theme.*
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
@@ -28,130 +35,280 @@ fun LoginScreen(
 ) {
     val state by viewModel.loginState.collectAsState()
     var passwordVisible by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
 
     LaunchedEffect(state.loginSuccess) {
-        if (state.loginSuccess) {
-            onLoginSuccess()
-            viewModel.resetLoginSuccess()
-        }
+        if (state.loginSuccess) { onLoginSuccess(); viewModel.resetLoginSuccess() }
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Logo / Judul
-            Icon(
-                imageVector = androidx.compose.material.icons.Icons.Filled.AccountBalance,
-                contentDescription = null,
-                modifier = Modifier.size(72.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
+    // Header slide-in animation
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { visible = true }
 
-            Spacer(modifier = Modifier.height(16.dp))
+    val headerOffset by animateFloatAsState(
+        targetValue = if (visible) 0f else -60f,
+        animationSpec = tween(700, easing = CubicBezierEasing(0.215f, 0.61f, 0.355f, 1f)),
+        label = "header"
+    )
+    val formAlpha by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = tween(800, delayMillis = 300),
+        label = "form_alpha"
+    )
+    val formOffset by animateFloatAsState(
+        targetValue = if (visible) 0f else 50f,
+        animationSpec = tween(700, delayMillis = 300, easing = CubicBezierEasing(0.215f, 0.61f, 0.355f, 1f)),
+        label = "form_offset"
+    )
 
-            Text(
-                text = "Aplikasi Absensi",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
-            )
-
-            Text(
-                text = "Masuk untuk melakukan absensi",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(40.dp))
-
-            // Username Field
-            OutlinedTextField(
-                value = state.username,
-                onValueChange = viewModel::onUsernameChange,
-                label = { Text("Username atau NIP") },
-                leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Password Field
-            OutlinedTextField(
-                value = state.password,
-                onValueChange = viewModel::onPasswordChange,
-                label = { Text("Password") },
-                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
-                trailingIcon = {
-                    val icon: ImageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility
-                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                        Icon(icon, contentDescription = if (passwordVisible) "Sembunyikan" else "Tampilkan")
-                    }
-                },
-                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            // Error message
-            AnimatedVisibilityError(message = state.errorMessage)
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Login Button
-            Button(
-                onClick = { viewModel.login() },
-                enabled = !state.isLoading,
+    AnimatedGradientBackground {
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-                shape = RoundedCornerShape(12.dp)
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 28.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                if (state.isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp
+                Spacer(modifier = Modifier.height(80.dp))
+
+                // === Logo & Judul ===
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.graphicsLayer {
+                        translationY = headerOffset
+                        alpha = if (visible) 1f else 0f
+                    }
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(88.dp)
+                            .background(
+                                Brush.linearGradient(listOf(PrimaryLight, AccentCyan)),
+                                CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Fingerprint,
+                            contentDescription = null,
+                            modifier = Modifier.size(48.dp),
+                            tint = Color.White
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Text(
+                        "Selamat Datang",
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
                     )
-                } else {
-                    Text("Masuk", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Masuk ke akun absensi Anda",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary
+                    )
                 }
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(44.dp))
 
-            // Link ke registrasi
-            TextButton(onClick = onNavigateToRegistrasi) {
-                Text("Belum punya akun? Daftar di sini")
+                // === Form Card ===
+                GlassCard(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .graphicsLayer {
+                            translationY = formOffset
+                            alpha = formAlpha
+                        },
+                    cornerRadius = 24.dp,
+                    alpha = 0.12f
+                ) {
+                    Column(modifier = Modifier.padding(24.dp)) {
+
+                        // Username field
+                        ModernTextField(
+                            value = state.username,
+                            onValueChange = viewModel::onUsernameChange,
+                            label = "Username / NIP",
+                            leadingIcon = Icons.Outlined.Person,
+                            keyboardOptions = KeyboardOptions(
+                                imeAction = ImeAction.Next
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                            )
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Password field
+                        ModernTextField(
+                            value = state.password,
+                            onValueChange = viewModel::onPasswordChange,
+                            label = "Password",
+                            leadingIcon = Icons.Outlined.Lock,
+                            isPassword = true,
+                            passwordVisible = passwordVisible,
+                            onPasswordToggle = { passwordVisible = !passwordVisible },
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Password,
+                                imeAction = ImeAction.Done
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onDone = { focusManager.clearFocus(); viewModel.login() }
+                            )
+                        )
+
+                        // Error
+                        state.errorMessage?.let { error ->
+                            Spacer(modifier = Modifier.height(14.dp))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(ErrorRed.copy(alpha = 0.15f))
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.ErrorOutline,
+                                    contentDescription = null,
+                                    tint = ErrorRed,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    error,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = ErrorRed
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // Login Button
+                        GradientButton(
+                            text = "Masuk",
+                            onClick = { focusManager.clearFocus(); viewModel.login() },
+                            enabled = !state.isLoading,
+                            isLoading = state.isLoading,
+                            modifier = Modifier.fillMaxWidth(),
+                            icon = {
+                                Icon(Icons.Default.Login, contentDescription = null,
+                                    tint = Color.White, modifier = Modifier.size(20.dp))
+                            }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Registrasi link
+                Row(
+                    modifier = Modifier.graphicsLayer { alpha = formAlpha },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(modifier = Modifier.weight(1f).height(1.dp)
+                        .background(Color.White.copy(alpha = 0.2f)))
+                    Text(
+                        "  atau  ",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextSecondary
+                    )
+                    Box(modifier = Modifier.weight(1f).height(1.dp)
+                        .background(Color.White.copy(alpha = 0.2f)))
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                TextButton(
+                    onClick = onNavigateToRegistrasi,
+                    modifier = Modifier.graphicsLayer { alpha = formAlpha }
+                ) {
+                    Text(
+                        "Belum punya akun? ",
+                        color = TextSecondary,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        "Daftar Sekarang",
+                        color = AccentCyan,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(40.dp))
             }
         }
     }
 }
 
 @Composable
-private fun AnimatedVisibilityError(message: String?) {
-    if (message != null) {
-        Spacer(modifier = Modifier.height(12.dp))
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.errorContainer
-            ),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = message,
-                modifier = Modifier.padding(12.dp),
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                style = MaterialTheme.typography.bodyMedium
+fun ModernTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector,
+    isPassword: Boolean = false,
+    passwordVisible: Boolean = false,
+    onPasswordToggle: (() -> Unit)? = null,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    modifier: Modifier = Modifier
+) {
+    val focused = remember { mutableStateOf(false) }
+    val borderColor by animateColorAsState(
+        targetValue = if (focused.value) AccentCyan else Color.White.copy(alpha = 0.2f),
+        label = "border"
+    )
+
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label, style = MaterialTheme.typography.bodyMedium) },
+        leadingIcon = {
+            Icon(
+                leadingIcon,
+                contentDescription = null,
+                tint = if (focused.value) AccentCyan else TextSecondary,
+                modifier = Modifier.size(20.dp)
             )
-        }
-    }
+        },
+        trailingIcon = if (isPassword) ({
+            IconButton(onClick = { onPasswordToggle?.invoke() }) {
+                Icon(
+                    if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                    contentDescription = null,
+                    tint = TextSecondary
+                )
+            }
+        }) else null,
+        visualTransformation = if (isPassword && !passwordVisible)
+            PasswordVisualTransformation() else VisualTransformation.None,
+        singleLine = true,
+        keyboardOptions = keyboardOptions,
+        keyboardActions = keyboardActions,
+        modifier = modifier
+            .fillMaxWidth()
+            .onFocusChanged { focused.value = it.isFocused },
+        shape = RoundedCornerShape(14.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedTextColor       = Color.White,
+            unfocusedTextColor     = Color.White,
+            focusedBorderColor     = AccentCyan,
+            unfocusedBorderColor   = Color.White.copy(alpha = 0.25f),
+            focusedLabelColor      = AccentCyan,
+            unfocusedLabelColor    = TextSecondary,
+            cursorColor            = AccentCyan,
+            focusedContainerColor  = Color.White.copy(alpha = 0.07f),
+            unfocusedContainerColor= Color.White.copy(alpha = 0.04f)
+        )
+    )
 }
+
+private fun Modifier.onFocusChanged(block: (androidx.compose.ui.focus.FocusState) -> Unit) =
+    this.then(Modifier.focusable())

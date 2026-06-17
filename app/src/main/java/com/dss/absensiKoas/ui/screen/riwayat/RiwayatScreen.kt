@@ -99,23 +99,33 @@ fun RiwayatScreen(
 }
 
 @Composable
-private fun RiwayatItemCard(item: AbsenRiwayatItem, jenisMasuk: Boolean) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp)) {
+private fun RiwayatItemCard(
+    item: AbsenRiwayatItem,
+    jenisMasuk: Boolean
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp)
+        ) {
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+
                 Column {
+
                     Text(
-                        formatTanggal(item.tanggal),
+                        text = formatTanggal(item.waktu),
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold
                     )
-                    val waktu = if (jenisMasuk) item.waktuMasuk else item.waktuPulang
+
                     Text(
-                        waktu?.let { formatWaktu(it) } ?: "-",
+                        text = formatWaktu(item.waktu),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
@@ -123,7 +133,12 @@ private fun RiwayatItemCard(item: AbsenRiwayatItem, jenisMasuk: Boolean) {
                 item.status?.let { status ->
                     AssistChip(
                         onClick = {},
-                        label = { Text(status, style = MaterialTheme.typography.labelSmall) },
+                        label = {
+                            Text(
+                                status,
+                                style = MaterialTheme.typography.labelSmall
+                            )
+                        },
                         colors = AssistChipDefaults.assistChipColors(
                             containerColor = statusColor(status).copy(alpha = 0.15f),
                             labelColor = statusColor(status)
@@ -132,22 +147,63 @@ private fun RiwayatItemCard(item: AbsenRiwayatItem, jenisMasuk: Boolean) {
                 }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+
                 if (item.lokasiValid == true) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF2E7D32), modifier = Modifier.size(14.dp))
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = Color(0xFF2E7D32),
+                        modifier = Modifier.size(14.dp)
+                    )
+
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Lokasi valid", style = MaterialTheme.typography.labelSmall, color = Color(0xFF2E7D32))
+
+                    Text(
+                        "Lokasi valid",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFF2E7D32)
+                    )
                 } else {
-                    Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFEF6C00), modifier = Modifier.size(14.dp))
+                    Icon(
+                        Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = Color(0xFFEF6C00),
+                        modifier = Modifier.size(14.dp)
+                    )
+
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Di luar radius", style = MaterialTheme.typography.labelSmall, color = Color(0xFFEF6C00))
+
+                    Text(
+                        "Di luar radius",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFFEF6C00)
+                    )
                 }
 
                 item.jarakDariKantor?.let {
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("${it.toInt()}m dari kantor", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                    Text(
+                        text = "${it.toInt()} m",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            if (!jenisMasuk) {
+                item.durasiKerjaMenit?.let {
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = "Durasi kerja: $it menit",
+                        style = MaterialTheme.typography.labelSmall
+                    )
                 }
             }
         }
@@ -161,19 +217,24 @@ private fun statusColor(status: String): Color = when (status) {
     else -> Color(0xFF2E7D32)
 }
 
-private fun formatTanggal(isoDate: String): String {
+private fun formatTanggal(isoDateTime: String): String {
     return try {
-        val date = LocalDateTime.parse(isoDate + "T00:00:00")
-        date.format(DateTimeFormatter.ofPattern("EEEE, dd MMM yyyy", java.util.Locale("id", "ID")))
+        LocalDateTime.parse(isoDateTime)
+            .format(
+                DateTimeFormatter.ofPattern(
+                    "EEEE, dd MMM yyyy",
+                    java.util.Locale("id", "ID")
+                )
+            )
     } catch (e: Exception) {
-        isoDate
+        isoDateTime
     }
 }
 
 private fun formatWaktu(isoDateTime: String): String {
     return try {
-        val dt = LocalDateTime.parse(isoDateTime)
-        dt.format(DateTimeFormatter.ofPattern("HH:mm:ss"))
+        LocalDateTime.parse(isoDateTime)
+            .format(DateTimeFormatter.ofPattern("HH:mm:ss"))
     } catch (e: Exception) {
         isoDateTime
     }

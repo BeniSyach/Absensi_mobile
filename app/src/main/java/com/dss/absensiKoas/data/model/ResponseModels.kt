@@ -102,11 +102,14 @@ data class StatusHariIniResponse(
 @Serializable
 data class AbsenRiwayatItem(
     val id: Long,
-    val tanggal: String,
-    val waktuMasuk: String? = null,
-    val waktuPulang: String? = null,
-    val status: String? = null,
-    val lokasiValid: Boolean? = null,
+    val jenis: String,
+    val waktu: String,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
     val jarakDariKantor: Double? = null,
-    val fotoAbsen: String? = null
+    val lokasiValid: Boolean? = null,
+    val mockLocationDetected: Boolean? = null,
+    val fotoAbsen: String? = null,
+    val status: String? = null,
+    val durasiKerjaMenit: Int? = null
 )

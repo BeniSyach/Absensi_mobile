@@ -20,7 +20,7 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "BASE_URL_DEBUG", "\"http://10.0.2.2:8080/\"")
-        buildConfigField("String", "BASE_URL_RELEASE", "\"https://api.absensi.go.id/\"")
+        buildConfigField("String", "BASE_URL_RELEASE", "\"https://presensicoasrsudhat.deliserdangkab.go.id/\"")
 
         // Google Maps API Key - diambil dari local.properties (jangan commit API key!)
         val mapsApiKey = project.findProperty("MAPS_API_KEY") as String? ?: "YOUR_MAPS_API_KEY_HERE"
@@ -34,19 +34,24 @@ android {
                 "BASE_URL",
                 "\"http://172.100.20.4:8080/\""
             )
+            manifestPlaceholders["usesCleartextTraffic"] = "true"
         }
 
         release {
+            manifestPlaceholders += mapOf()
             buildConfigField(
                 "String",
                 "BASE_URL",
-                "\"https://api.absensi.go.id/\""
+                "\"https://presensicoasrsudhat.deliserdangkab.go.id/api/\""
             )
+            manifestPlaceholders["usesCleartextTraffic"] = "false"
+
             isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {

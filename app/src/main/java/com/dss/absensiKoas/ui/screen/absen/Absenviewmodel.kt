@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.dss.absensiKoas.data.local.TokenManager
 import com.dss.absensiKoas.data.model.AbsenResponse
+import com.dss.absensiKoas.data.model.ShiftResponse
 import com.dss.absensiKoas.data.model.StatusHariIniResponse
 import com.dss.absensiKoas.data.repository.AbsensiRepository
 import com.dss.absensiKoas.data.repository.Resource
@@ -18,221 +19,366 @@ import javax.inject.Inject
 
 enum class JenisAbsen { MASUK, PULANG }
 
+/**
+ * State machine alur absen:
+ * IDLE → PILIH_SHIFT → AMBIL_LOKASI → AMBIL_FOTO → KONFIRMASI → SUBMIT → SUKSES
+ */
+enum class AbsenStep {
+    PILIH_SHIFT,      // Step 1: user pilih shift (hanya untuk MASUK)
+    AMBIL_LOKASI,     // Step 2: ambil GPS
+    AMBIL_FOTO,       // Step 3: ambil foto selfie
+    KONFIRMASI,       // Step 4: review sebelum submit
+    SUBMIT,           // Step 5: sedang upload ke server
+    SUKSES            // Step 6: berhasil
+}
+
 data class AbsenUiState(
+// ── Step saat ini ──
+    val step: AbsenStep = AbsenStep.PILIH_SHIFT,
+
+// ── Data shift ──
+    val isLoadingShift: Boolean = false,
+    val daftarShift: List<ShiftResponse> = emptyList(),
+    val shiftDipilih: ShiftResponse? = null,     // shift yang dipilih user
+
+// ── Data lokasi ──
     val isLoadingLokasi: Boolean = false,
-    val isSubmitting: Boolean = false,
     val lokasiSaatIni: Location? = null,
     val mockLocationTerdeteksi: Boolean = false,
-    val errorMessage: String? = null,
-    val absenResult: AbsenResponse? = null,
-    val statusHariIni: StatusHariIniResponse? = null,
-    val isLoadingStatus: Boolean = false,
+    val jarakKeKantor: Float? = null,
+    val dalamRadius: Boolean? = null,
+    val pesanLokasi: String? = null,
 
-    // === DATA OPD KANTOR ===
+// ── Data kantor (dari cache login) ──
     val namaOpd: String? = null,
     val latKantor: Double? = null,
     val lonKantor: Double? = null,
-    val radiusKantor: Int = 100,              // meter, default 100m
+    val radiusKantor: Int = 100,
 
-    // === HASIL VALIDASI RADIUS ===
-    val jarakKeKantor: Float? = null,         // dalam meter
-    val dalamRadius: Boolean? = null,         // null = belum dicek, true/false = hasil cek
-    val pesanLokasi: String? = null           // pesan informatif untuk user
+// ── Foto ──
+    val fotoFile: File? = null,
+
+// ── Submit ──
+    val isSubmitting: Boolean = false,
+    val absenResult: AbsenResponse? = null,
+
+// ── Status hari ini ──
+    val statusHariIni: StatusHariIniResponse? = null,
+
+// ── Error ──
+    val errorMessage: String? = null,
+    val catatan: String = ""
 )
 
 @HiltViewModel
 class AbsenViewModel @Inject constructor(
-    private val absensiRepository: AbsensiRepository,
+    private val repository: AbsensiRepository,
     private val tokenManager: TokenManager
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(AbsenUiState())
-    val uiState: StateFlow<AbsenUiState> = _uiState.asStateFlow()
+    private val _state = MutableStateFlow(AbsenUiState())
+    val state: StateFlow<AbsenUiState> = _state.asStateFlow()
 
     init {
-        muatDataOpdDariCache()
+        muatDataOpdDanShift()
+        muatStatusHariIni()
     }
 
-    /**
-     * Muat koordinat kantor & radius dari DataStore (tersimpan saat login).
-     * Tidak perlu request API — data sudah ada di lokal.
-     */
-    private fun muatDataOpdDariCache() {
+    // ─────────────────────────────────────────────────────────────
+    // INIT: muat data OPD dari cache dan daftar shift dari API
+    // ─────────────────────────────────────────────────────────────
+
+    private fun muatDataOpdDanShift() {
         viewModelScope.launch {
+            // Koordinat kantor dari DataStore (tersimpan saat login)
             val lat    = tokenManager.getOpdLatKantor()
             val lon    = tokenManager.getOpdLonKantor()
             val radius = tokenManager.getOpdRadiusAbsen()
             val nama   = tokenManager.getOpdNama()
 
-            _uiState.value = _uiState.value.copy(
-                latKantor  = lat,
-                lonKantor  = lon,
+            _state.value = _state.value.copy(
+                latKantor    = lat,
+                lonKantor    = lon,
                 radiusKantor = radius,
-                namaOpd    = nama
+                namaOpd      = nama
             )
+
+            // Muat daftar shift dari API
+            muatDaftarShift()
         }
     }
 
-    /**
-     * Ambil lokasi GPS terkini, lalu hitung jarak ke kantor secara otomatis.
-     */
+    fun muatDaftarShift() {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(isLoadingShift = true, errorMessage = null)
+            repository.getDaftarShift().collect { result ->
+                when (result) {
+                    is Resource.Loading -> _state.value = _state.value.copy(isLoadingShift = true)
+                    is Resource.Success -> _state.value = _state.value.copy(
+                        isLoadingShift = false,
+                        daftarShift    = result.data
+                    )
+                    is Resource.Error   -> _state.value = _state.value.copy(
+                        isLoadingShift = false,
+                        errorMessage   = result.message
+                    )
+                }
+            }
+        }
+    }
+
+    fun muatStatusHariIni() {
+        viewModelScope.launch {
+            repository.getStatusHariIni().collect { result ->
+                if (result is Resource.Success) {
+                    _state.value = _state.value.copy(statusHariIni = result.data)
+                }
+            }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // STEP 1: Pilih shift (hanya absen masuk)
+    // Absen pulang langsung ke step lokasi
+    // ─────────────────────────────────────────────────────────────
+
+    fun pilihShift(shift: ShiftResponse) {
+        _state.value = _state.value.copy(
+            shiftDipilih = shift,
+            errorMessage = null
+        )
+    }
+
+    fun lanjutDariPilihShift(jenisAbsen: JenisAbsen) {
+        if (jenisAbsen == JenisAbsen.MASUK && _state.value.shiftDipilih == null) {
+            _state.value = _state.value.copy(errorMessage = "Pilih shift terlebih dahulu")
+            return
+        }
+        // Langsung ambil lokasi di background, user ke step lokasi
+        _state.value = _state.value.copy(step = AbsenStep.AMBIL_LOKASI)
+        ambilLokasi()
+    }
+
+    /** Absen pulang: skip step pilih shift langsung ke lokasi */
+    fun mulaiAbsenPulang() {
+        _state.value = _state.value.copy(step = AbsenStep.AMBIL_LOKASI)
+        ambilLokasi()
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // STEP 2: Ambil lokasi GPS
+    // ─────────────────────────────────────────────────────────────
+
     fun ambilLokasi() {
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(
+            _state.value = _state.value.copy(
                 isLoadingLokasi = true,
                 errorMessage    = null,
-                pesanLokasi     = null,
                 dalamRadius     = null,
-                jarakKeKantor   = null
+                jarakKeKantor   = null,
+                pesanLokasi     = null
             )
             try {
-                val location = absensiRepository.ambilLokasiSaatIni()
-                val isMock   = absensiRepository.cekMockLocation(location)
+                val location = repository.ambilLokasiSaatIni()
+                val isMock   = repository.cekMockLocation(location)
 
-                // Hitung jarak ke kantor (jika koordinat kantor tersedia)
-                val lat    = _uiState.value.latKantor
-                val lon    = _uiState.value.lonKantor
-                val radius = _uiState.value.radiusKantor
+                val lat    = _state.value.latKantor
+                val lon    = _state.value.lonKantor
+                val radius = _state.value.radiusKantor
 
                 val jarak: Float?
                 val dalamRadius: Boolean?
-                val pesanLokasi: String?
+                val pesan: String?
 
                 if (lat != null && lon != null) {
-                    jarak = absensiRepository.hitungJarak(
-                        location.latitude, location.longitude, lat, lon
-                    )
+                    jarak = repository.hitungJarak(location.latitude, location.longitude, lat, lon)
                     dalamRadius = jarak <= radius
 
-                    pesanLokasi = when {
-                        isMock      -> "⚠️ Fake GPS terdeteksi! Absen akan ditandai dan diperiksa admin."
-                        !dalamRadius -> "📍 Anda berada ${formatJarak(jarak)} dari kantor.\n" +
-                                "Radius absen: ${radius}m. Silakan menuju area kantor."
-                        location.accuracy > 50f ->
-                            "📶 Akurasi GPS rendah (${location.accuracy.toInt()}m). Coba di area terbuka."
-                        else        -> "✅ Anda berada dalam radius kantor (${formatJarak(jarak)})"
+                    pesan = when {
+                        isMock -> "⚠️ Fake GPS terdeteksi! Absen tidak bisa dilanjutkan."
+                        !dalamRadius -> "📍 Anda ${formatJarak(jarak)} dari kantor.\nRadius absen: ${radius}m."
+                        location.accuracy > 50f -> "📶 Akurasi GPS rendah (${location.accuracy.toInt()}m)."
+                        else -> "✅ Dalam radius kantor (${formatJarak(jarak)})"
                     }
                 } else {
-                    // Koordinat kantor belum ada — tidak bisa validasi
-                    jarak       = null
-                    dalamRadius = null
-                    pesanLokasi = if (isMock)
-                        "⚠️ Fake GPS terdeteksi!"
-                    else
-                        "📍 Lokasi didapat. Validasi radius akan dilakukan server."
+                    jarak = null; dalamRadius = null
+                    pesan = if (isMock) "⚠️ Fake GPS terdeteksi!" else "📍 Lokasi didapat."
                 }
 
-                _uiState.value = _uiState.value.copy(
-                    isLoadingLokasi       = false,
-                    lokasiSaatIni         = location,
+                _state.value = _state.value.copy(
+                    isLoadingLokasi        = false,
+                    lokasiSaatIni          = location,
                     mockLocationTerdeteksi = isMock,
-                    jarakKeKantor         = jarak,
-                    dalamRadius           = dalamRadius,
-                    pesanLokasi           = pesanLokasi
+                    jarakKeKantor          = jarak,
+                    dalamRadius            = dalamRadius,
+                    pesanLokasi            = pesan
                 )
-
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
+                _state.value = _state.value.copy(
                     isLoadingLokasi = false,
-                    errorMessage    = e.message
-                        ?: "Gagal mendapatkan lokasi. Pastikan GPS aktif."
+                    errorMessage    = e.message ?: "Gagal mendapatkan lokasi. Pastikan GPS aktif."
                 )
             }
         }
     }
 
-    /**
-     * Submit absen masuk.
-     * Blokir jika:
-     *  1. Lokasi belum ada
-     *  2. Di luar radius kantor (dalamRadius == false)
-     *  3. Mock location terdeteksi → tetap BLOKIR (tidak boleh absen dari lokasi palsu)
-     */
-    fun absenMasuk(fotoFile: File, catatan: String? = null) {
-        if (!validasiSebelumSubmit()) return
+    fun lanjutKeAmbilFoto() {
+        val s = _state.value
+        when {
+            s.lokasiSaatIni == null -> {
+                _state.value = s.copy(errorMessage = "Lokasi belum tersedia. Tekan refresh GPS.")
+                return
+            }
+            s.mockLocationTerdeteksi -> {
+                _state.value = s.copy(
+                    errorMessage = "🚫 Fake GPS terdeteksi! Nonaktifkan aplikasi fake GPS terlebih dahulu."
+                )
+                return
+            }
+            s.dalamRadius == false -> {
+                _state.value = s.copy(
+                    errorMessage = "🚫 Anda berada di luar radius kantor (${formatJarak(s.jarakKeKantor)}).\n" +
+                            "Silakan menuju area kantor terlebih dahulu."
+                )
+                return
+            }
+        }
+        _state.value = s.copy(step = AbsenStep.AMBIL_FOTO, errorMessage = null)
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // STEP 3: Foto diambil dari kamera
+    // ─────────────────────────────────────────────────────────────
+
+    fun onFotoDidambil(file: File) {
+        _state.value = _state.value.copy(
+            fotoFile = file,
+            step     = AbsenStep.KONFIRMASI,
+            errorMessage = null
+        )
+    }
+
+    fun ulangiAmbilFoto() {
+        _state.value = _state.value.copy(
+            fotoFile = null,
+            step     = AbsenStep.AMBIL_FOTO
+        )
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // STEP 4: Konfirmasi — user review semua data
+    // ─────────────────────────────────────────────────────────────
+
+    fun setCatatan(catatan: String) {
+        _state.value = _state.value.copy(catatan = catatan)
+    }
+
+    fun kembaliKeLokasi() {
+        _state.value = _state.value.copy(step = AbsenStep.AMBIL_LOKASI)
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // STEP 5: Submit ke server
+    // ─────────────────────────────────────────────────────────────
+
+    fun submitAbsenMasuk() {
+        val s = _state.value
+        if (!validasiSebelumSubmit(s)) return
+
+        val lokasiRequest = repository.toLokasiRequest(s.lokasiSaatIni!!)
 
         viewModelScope.launch {
-            val lokasiRequest = absensiRepository.toLokasiRequest(_uiState.value.lokasiSaatIni!!)
-            absensiRepository.absenMasuk(fotoFile, lokasiRequest, catatan)
-                .collect { handleAbsenResult(it) }
+            _state.value = s.copy(step = AbsenStep.SUBMIT, isSubmitting = true, errorMessage = null)
+
+            repository.absenMasuk(
+                fotoFile = s.fotoFile!!,
+                shiftId  = s.shiftDipilih!!.id,
+                lokasi   = lokasiRequest,
+                catatan  = s.catatan.ifBlank { null }
+            ).collect { result ->
+                handleResult(result)
+            }
         }
     }
 
-    /**
-     * Submit absen pulang.
-     * Sama — blokir jika di luar radius atau mock location.
-     */
-    fun absenPulang(fotoFile: File, catatan: String? = null) {
-        if (!validasiSebelumSubmit()) return
+    fun submitAbsenPulang() {
+        val s = _state.value
+        if (!validasiSebelumSubmit(s, requireShift = false)) return
+
+        val lokasiRequest = repository.toLokasiRequest(s.lokasiSaatIni!!)
 
         viewModelScope.launch {
-            val lokasiRequest = absensiRepository.toLokasiRequest(_uiState.value.lokasiSaatIni!!)
-            absensiRepository.absenPulang(fotoFile, lokasiRequest, catatan)
-                .collect { handleAbsenResult(it) }
+            _state.value = s.copy(step = AbsenStep.SUBMIT, isSubmitting = true, errorMessage = null)
+
+            repository.absenPulang(
+                fotoFile = s.fotoFile!!,
+                lokasi   = lokasiRequest,
+                catatan  = s.catatan.ifBlank { null }
+            ).collect { result ->
+                handleResult(result)
+            }
         }
     }
 
-    /**
-     * Validasi terpusat sebelum submit.
-     * Return true = boleh lanjut, false = ditolak.
-     */
-    private fun validasiSebelumSubmit(): Boolean {
-        val state = _uiState.value
-
-        if (state.lokasiSaatIni == null) {
-            _uiState.value = state.copy(
-                errorMessage = "Lokasi belum tersedia. Tekan tombol refresh GPS."
-            )
-            return false
+    private fun validasiSebelumSubmit(s: AbsenUiState, requireShift: Boolean = true): Boolean {
+        return when {
+            requireShift && s.shiftDipilih == null -> {
+                _state.value = s.copy(errorMessage = "Pilih shift terlebih dahulu")
+                false
+            }
+            s.lokasiSaatIni == null -> {
+                _state.value = s.copy(errorMessage = "Lokasi belum tersedia")
+                false
+            }
+            s.mockLocationTerdeteksi -> {
+                _state.value = s.copy(errorMessage = "🚫 Fake GPS terdeteksi. Absen ditolak.")
+                false
+            }
+            s.dalamRadius == false -> {
+                _state.value = s.copy(errorMessage = "🚫 Anda di luar radius kantor.")
+                false
+            }
+            s.fotoFile == null -> {
+                _state.value = s.copy(errorMessage = "Foto selfie belum diambil")
+                false
+            }
+            else -> true
         }
-
-        // Blokir jika mock location terdeteksi
-        if (state.mockLocationTerdeteksi) {
-            _uiState.value = state.copy(
-                errorMessage = "🚫 Absen ditolak: Fake GPS / Mock Location terdeteksi pada perangkat Anda.\n" +
-                        "Nonaktifkan aplikasi fake GPS dan coba lagi."
-            )
-            return false
-        }
-
-        // Blokir jika sudah tahu di luar radius
-        if (state.dalamRadius == false) {
-            val jarak = state.jarakKeKantor
-            val radius = state.radiusKantor
-            _uiState.value = state.copy(
-                errorMessage = "🚫 Absen ditolak: Anda berada ${jarak?.let { formatJarak(it) } ?: "jauh"} " +
-                        "dari kantor.\nRadius absen maksimal ${radius}m. " +
-                        "Silakan menuju area kantor terlebih dahulu."
-            )
-            return false
-        }
-
-        return true
     }
 
-    private fun handleAbsenResult(result: Resource<AbsenResponse>) {
+    private fun handleResult(result: Resource<AbsenResponse>) {
         when (result) {
-            is Resource.Loading -> {
-                _uiState.value = _uiState.value.copy(isSubmitting = true, errorMessage = null)
-            }
-            is Resource.Success -> {
-                _uiState.value = _uiState.value.copy(isSubmitting = false, absenResult = result.data)
-            }
-            is Resource.Error -> {
-                _uiState.value = _uiState.value.copy(isSubmitting = false, errorMessage = result.message)
-            }
+            is Resource.Loading -> { /* sudah set di submit */ }
+            is Resource.Success -> _state.value = _state.value.copy(
+                isSubmitting = false,
+                step         = AbsenStep.SUKSES,
+                absenResult  = result.data
+            )
+            is Resource.Error   -> _state.value = _state.value.copy(
+                isSubmitting = false,
+                step         = AbsenStep.KONFIRMASI, // kembali ke konfirmasi agar bisa retry
+                errorMessage = result.message
+            )
         }
     }
+
+    // ─────────────────────────────────────────────────────────────
+    // Utils
+    // ─────────────────────────────────────────────────────────────
 
     fun resetAbsenResult() {
-        _uiState.value = _uiState.value.copy(absenResult = null)
+        _state.value = AbsenUiState()
+        muatDataOpdDanShift()
+        muatStatusHariIni()
     }
 
     fun clearError() {
-        _uiState.value = _uiState.value.copy(errorMessage = null)
+        _state.value = _state.value.copy(errorMessage = null)
     }
 
-    private fun formatJarak(meter: Float): String =
-        if (meter >= 1000) String.format("%.1f km", meter / 1000)
+    private fun formatJarak(meter: Float?): String {
+        if (meter == null) return "?"
+        return if (meter >= 1000) String.format("%.1f km", meter / 1000f)
         else "${meter.toInt()} meter"
+    }
 }

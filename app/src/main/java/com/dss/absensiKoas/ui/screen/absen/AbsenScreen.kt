@@ -30,6 +30,7 @@ import com.google.maps.android.compose.*
 import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -38,7 +39,7 @@ fun AbsenScreen(
     onAbsenSukses: () -> Unit,
     viewModel: AbsenViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val uiState by viewModel.state.collectAsStateWithLifecycle()
     var showCamera by remember { mutableStateOf(false) }
     var fotoFile by remember { mutableStateOf<File?>(null) }
     var catatan by remember { mutableStateOf("") }

@@ -44,17 +44,31 @@ data class OpdResponse(
     val radiusAbsen: Int
 )
 
+// ── Shift ─────────────────────────────────────────────────
 @Serializable
 data class ShiftResponse(
     val id: Long,
     val nama: String,
-    val jamMasuk: String,
-    val jamPulang: String,
-    val toleransiTerlambat: Int? = null,
-    val toleransiPulangAwal: Int? = null,
-    val hariKerja: Set<String>? = null
-)
+    val jamMasuk: String,        // "07:30"
+    val jamPulang: String,       // "16:00"
+    val toleransiTerlambat: Int? = 15,
+    val toleransiPulangAwal: Int? = 10,
+    val lintasHari: Boolean? = false,
+    val aktif: Boolean? = true
+) {
+    /** Label untuk ditampilkan di UI */
+    fun labelLengkap(): String {
+        val suffix = if (lintasHari == true) " (lintas hari 🌙)" else ""
+        return "$nama · $jamMasuk – $jamPulang$suffix"
+    }
 
+    /** Emoji berdasarkan jam masuk */
+    fun emoji(): String = when {
+        jamMasuk >= "05:00" && jamMasuk < "11:00" -> "🌅"
+        jamMasuk >= "11:00" && jamMasuk < "17:00" -> "☀️"
+        else -> "🌙"
+    }
+}
 @Serializable
 data class UserDetailResponse(
     val id: Long,
@@ -84,7 +98,10 @@ data class AbsenResponse(
     val fotoAbsen: String? = null,
     val status: String,
     val pesan: String? = null,
-    val durasiKerjaMenit: Int? = null
+    val durasiKerjaMenit: Int? = null,
+    val shiftId: Long? = null,
+    val shiftNama: String? = null,
+    val shiftLintasHari: Boolean? = null
 )
 
 @Serializable
@@ -96,7 +113,10 @@ data class StatusHariIniResponse(
     val statusMasuk: String? = null,
     val waktuPulang: String? = null,
     val statusPulang: String? = null,
-    val durasiKerjaMenit: Int? = null
+    val durasiKerjaMenit: Int? = null,
+    val shiftId: Long? = null,
+    val shiftNama: String? = null,
+    val shiftLintasHari: Boolean? = null
 )
 
 @Serializable
@@ -111,5 +131,7 @@ data class AbsenRiwayatItem(
     val mockLocationDetected: Boolean? = null,
     val fotoAbsen: String? = null,
     val status: String? = null,
-    val durasiKerjaMenit: Int? = null
+    val durasiKerjaMenit: Int? = null,
+    val pesan: String? = null,
+    val tanggal: String? = null
 )

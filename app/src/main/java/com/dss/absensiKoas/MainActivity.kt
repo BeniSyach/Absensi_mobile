@@ -14,6 +14,7 @@ import androidx.navigation.compose.rememberNavController
 import com.dss.absensiKoas.data.local.TokenManager
 import com.dss.absensiKoas.ui.navigation.AbsensiNavGraph
 import com.dss.absensiKoas.ui.navigation.NavRoutes
+import com.dss.absensiKoas.ui.screen.SplashScreen
 import com.dss.absensiKoas.ui.theme.AbsensiKoasTheme
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -32,9 +33,10 @@ class MainActivity : ComponentActivity() {
             AbsensiKoasTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
 
-                    // Cek status login terlebih dahulu sebelum menentukan start destination
+                    var showSplash by remember { mutableStateOf(true) }
                     var startDestination by remember { mutableStateOf<String?>(null) }
 
+                    // Cek login di background, bersamaan dengan splash
                     LaunchedEffect(Unit) {
                         val isLoggedIn = tokenManager.isLoggedIn()
                         startDestination = if (isLoggedIn) {
@@ -44,20 +46,26 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    if (startDestination == null) {
-                        // Splash sederhana sambil cek sesi
-                        androidx.compose.foundation.layout.Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator()
-                        }
-                    } else {
-                        val navController = rememberNavController()
-                        AbsensiNavGraph(
-                            navController = navController,
-                            startDestination = startDestination!!
+                    if (showSplash) {
+                        SplashScreen(
+                            onFinished = { showSplash = false }
                         )
+                    } else {
+                        if (startDestination == null) {
+                            // Jaga-jaga jika cek login belum selesai saat splash habis
+                            androidx.compose.foundation.layout.Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        } else {
+                            val navController = rememberNavController()
+                            AbsensiNavGraph(
+                                navController = navController,
+                                startDestination = startDestination!!
+                            )
+                        }
                     }
                 }
             }

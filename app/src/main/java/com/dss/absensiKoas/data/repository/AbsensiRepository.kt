@@ -44,19 +44,42 @@ class AbsensiRepository @Inject constructor(
     fun hitungJarak(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Float =
         locationHelper.hitungJarak(lat1, lon1, lat2, lon2)
 
+    // ── Shift: ambil daftar shift OPD user ────────────────────────
+
+    fun getDaftarShift(): Flow<Resource<List<ShiftResponse>>> = flow {
+        emit(Resource.Loading)
+        try {
+            val response = api.getDaftarShift()
+            if (response.isSuccessful && response.body()?.success == true) {
+                emit(Resource.Success(response.body()!!.data ?: emptyList()))
+            } else {
+                emit(Resource.Error(response.body()?.error ?: "Gagal memuat daftar shift"))
+            }
+        } catch (e: Exception) {
+            emit(Resource.Error(mapException(e)))
+        }
+    }
+
     /**
      * Absen masuk dengan foto dan data lokasi.
      * Foto akan dikompres sebelum dikirim untuk menghemat bandwidth.
      */
     fun absenMasuk(
         fotoFile: File,
+        shiftId: Long,
         lokasi: LokasiRequest,
         catatan: String? = null
     ): Flow<Resource<AbsenResponse>> = flow {
         emit(Resource.Loading)
         try {
             val fotoPart = buildFotoPart(fotoFile, "foto")
-            val dataJson = json.encodeToString(AbsenRequestData(lokasi = lokasi, catatan = catatan))
+            val dataJson = json.encodeToString(
+                AbsenRequestData(
+                    shiftId = shiftId,
+                    lokasi = lokasi,
+                    catatan = catatan
+                )
+            )
             val dataPart = dataJson.toRequestBody("application/json".toMediaType())
 
             val response = api.absenMasuk(fotoPart, dataPart)
@@ -82,7 +105,13 @@ class AbsensiRepository @Inject constructor(
         emit(Resource.Loading)
         try {
             val fotoPart = buildFotoPart(fotoFile, "foto")
-            val dataJson = json.encodeToString(AbsenRequestData(lokasi = lokasi, catatan = catatan))
+            val dataJson = json.encodeToString(
+                AbsenRequestData(
+                    shiftId = null,
+                    lokasi = lokasi,
+                    catatan = catatan
+                )
+            )
             val dataPart = dataJson.toRequestBody("application/json".toMediaType())
 
             val response = api.absenPulang(fotoPart, dataPart)

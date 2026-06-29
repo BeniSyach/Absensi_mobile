@@ -25,6 +25,7 @@ data class LokasiRequest(
 
 @Serializable
 data class AbsenRequestData(
+    val shiftId: Long? = null,
     val lokasi: LokasiRequest,
     val catatan: String? = null
 )

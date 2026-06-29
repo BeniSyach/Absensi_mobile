@@ -9,8 +9,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -55,9 +53,25 @@ fun SplashScreen(onFinished: () -> Unit) {
         label = "progress"
     )
 
+    var splashVisible by remember {
+        mutableStateOf(true)
+    }
+
+    val splashAlpha by animateFloatAsState(
+        targetValue = if (splashVisible) 1f else 0f,
+        animationSpec = tween(600),
+        label = "splash_alpha"
+    )
+
     LaunchedEffect(Unit) {
         startAnim = true
-        delay(2600)
+
+        delay(4000)
+
+        splashVisible = false
+
+        delay(600)
+
         onFinished()
     }
 
@@ -88,12 +102,16 @@ fun SplashScreen(onFinished: () -> Unit) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(40.dp),
+                .graphicsLayer {
+                    alpha = splashAlpha
+                },
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
             // Logo dengan ring pulse
-            Box(contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center) {
                 // Ring 1
                 Box(
                     modifier = Modifier

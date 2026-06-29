@@ -206,42 +206,7 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Registrasi link
-                Row(
-                    modifier = Modifier.graphicsLayer { alpha = formAlpha },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(modifier = Modifier.weight(1f).height(1.dp)
-                        .background(Color.White.copy(alpha = 0.2f)))
-                    Text(
-                        "  atau  ",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TextSecondary
-                    )
-                    Box(modifier = Modifier.weight(1f).height(1.dp)
-                        .background(Color.White.copy(alpha = 0.2f)))
-                }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                TextButton(
-                    onClick = onNavigateToRegistrasi,
-                    modifier = Modifier.graphicsLayer { alpha = formAlpha }
-                ) {
-                    Text(
-                        "Belum punya akun? ",
-                        color = TextSecondary,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        "Daftar Sekarang",
-                        color = AccentCyan,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(40.dp))
             }
         }
     }

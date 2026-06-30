@@ -20,31 +20,39 @@ class TokenManager @Inject constructor(
     private val context: Context
 ) {
     private object Keys {
-        val ACCESS_TOKEN = stringPreferencesKey("access_token")
+        val ACCESS_TOKEN  = stringPreferencesKey("access_token")
         val REFRESH_TOKEN = stringPreferencesKey("refresh_token")
-        val DEVICE_ID = stringPreferencesKey("device_id")
-        val USER_ID = longPreferencesKey("user_id")
-        val USERNAME = stringPreferencesKey("username")
-        val ROLE = stringPreferencesKey("role")
-        // Data OPD — disimpan saat login untuk validasi radius offline
-        val OPD_NAMA           = stringPreferencesKey("opd_nama")
-        val OPD_LAT_KANTOR     = floatPreferencesKey("opd_lat_kantor")
-        val OPD_LON_KANTOR     = floatPreferencesKey("opd_lon_kantor")
-        val OPD_RADIUS_ABSEN   = intPreferencesKey("opd_radius_absen")
+        val DEVICE_ID     = stringPreferencesKey("device_id")
+        val USER_ID       = longPreferencesKey("user_id")
+        val USERNAME      = stringPreferencesKey("username")
+        val ROLE          = stringPreferencesKey("role")
+
+        // Data OPD — disimpan saat login untuk validasi radius offline.
+        // PENTING: koordinat GPS pakai doublePreferencesKey, BUKAN float.
+        // Float hanya punya ~7 digit presisi desimal; pada koordinat lat/lon
+        // (contoh: -6.914744123) ini bisa menggeser posisi sampai beberapa
+        // meter setelah disimpan-baca ulang — fatal untuk validasi radius kantor.
+        val OPD_NAMA         = stringPreferencesKey("opd_nama")
+        val OPD_LAT_KANTOR   = doublePreferencesKey("opd_lat_kantor")
+        val OPD_LON_KANTOR   = doublePreferencesKey("opd_lon_kantor")
+        val OPD_RADIUS_ABSEN = intPreferencesKey("opd_radius_absen")
     }
 
-    val accessTokenFlow: Flow<String?> = context.dataStore.data.map { it[Keys.ACCESS_TOKEN] }
+    val accessTokenFlow: Flow<String?>  = context.dataStore.data.map { it[Keys.ACCESS_TOKEN] }
     val refreshTokenFlow: Flow<String?> = context.dataStore.data.map { it[Keys.REFRESH_TOKEN] }
-    val usernameFlow: Flow<String?> = context.dataStore.data.map { it[Keys.USERNAME] }
-    val roleFlow: Flow<String?> = context.dataStore.data.map { it[Keys.ROLE] }
+    val usernameFlow: Flow<String?>     = context.dataStore.data.map { it[Keys.USERNAME] }
+    val roleFlow: Flow<String?>         = context.dataStore.data.map { it[Keys.ROLE] }
 
     // Data OPD untuk cek radius di sisi klien
     suspend fun getOpdLatKantor(): Double? =
-        context.dataStore.data.map { it[Keys.OPD_LAT_KANTOR]?.toDouble() }.first()
+        context.dataStore.data.map { it[Keys.OPD_LAT_KANTOR] }.first()
+
     suspend fun getOpdLonKantor(): Double? =
-        context.dataStore.data.map { it[Keys.OPD_LON_KANTOR]?.toDouble() }.first()
+        context.dataStore.data.map { it[Keys.OPD_LON_KANTOR] }.first()
+
     suspend fun getOpdRadiusAbsen(): Int =
         context.dataStore.data.map { it[Keys.OPD_RADIUS_ABSEN] ?: 100 }.first()
+
     suspend fun getOpdNama(): String? =
         context.dataStore.data.map { it[Keys.OPD_NAMA] }.first()
 
@@ -65,17 +73,18 @@ class TokenManager @Inject constructor(
         context.dataStore.edit { prefs ->
             prefs[Keys.ACCESS_TOKEN] = accessToken
             refreshToken?.let { prefs[Keys.REFRESH_TOKEN] = it }
-            prefs[Keys.USER_ID] = userId
+            prefs[Keys.USER_ID]  = userId
             prefs[Keys.USERNAME] = username
-            prefs[Keys.ROLE] = role
-            // Simpan data OPD jika tersedia
-            opdNama?.let       { prefs[Keys.OPD_NAMA]         = it }
-            opdLatKantor?.let  { prefs[Keys.OPD_LAT_KANTOR]   = it.toFloat() }
-            opdLonKantor?.let  { prefs[Keys.OPD_LON_KANTOR]   = it.toFloat() }
-            opdRadiusAbsen?.let{ prefs[Keys.OPD_RADIUS_ABSEN] = it }
+            prefs[Keys.ROLE]     = role
+            // Simpan data OPD jika tersedia — langsung Double, tanpa konversi presisi
+            opdNama?.let        { prefs[Keys.OPD_NAMA]         = it }
+            opdLatKantor?.let   { prefs[Keys.OPD_LAT_KANTOR]   = it }
+            opdLonKantor?.let   { prefs[Keys.OPD_LON_KANTOR]   = it }
+            opdRadiusAbsen?.let { prefs[Keys.OPD_RADIUS_ABSEN] = it }
         }
     }
 
+    /** Update hanya access token — dipanggil TokenAuthenticator setelah refresh sukses */
     suspend fun updateAccessToken(accessToken: String) {
         context.dataStore.edit { prefs ->
             prefs[Keys.ACCESS_TOKEN] = accessToken
@@ -86,13 +95,17 @@ class TokenManager @Inject constructor(
         val existing = context.dataStore.data.map { it[Keys.DEVICE_ID] }.first()
         if (existing != null) return existing
 
-        // Generate device ID unik berdasarkan Android ID
         val newId = "android-${android.os.Build.MODEL}-${java.util.UUID.randomUUID().toString().take(8)}"
             .replace(" ", "_")
         context.dataStore.edit { it[Keys.DEVICE_ID] = newId }
         return newId
     }
 
+    /**
+     * Hapus semua data sesi — dipanggil saat logout manual
+     * ATAU saat sesi dipaksa habis (refresh token gagal, dipanggil
+     * dari TokenAuthenticator.triggerSessionExpired()).
+     */
     suspend fun clearSession() {
         context.dataStore.edit { it.clear() }
     }

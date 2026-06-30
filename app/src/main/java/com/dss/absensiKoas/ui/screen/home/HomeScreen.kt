@@ -564,29 +564,29 @@ private fun ShiftInfoCard(shift: com.dss.absensiKoas.data.model.ShiftResponse) {
                 }
             }
 
-            shift.hariKerja?.let { hari ->
-                Spacer(modifier = Modifier.height(12.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf("Sen","Sel","Rab","Kam","Jum","Sab","Min").forEachIndexed { idx, nama ->
-                        val dayName = listOf("MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY","SUNDAY")[idx]
-                        val active = hari.contains(dayName)
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .background(
-                                    if (active) AccentCyan.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.05f),
-                                    CircleShape
-                                )
-                                .border(1.dp, if (active) AccentCyan.copy(0.5f) else Color.Transparent, CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(nama, style = MaterialTheme.typography.labelSmall,
-                                color = if (active) AccentCyan else TextSecondary,
-                                fontWeight = if (active) FontWeight.Bold else FontWeight.Normal)
-                        }
-                    }
-                }
-            }
+//            shift.hariKerja?.let { hari ->
+//                Spacer(modifier = Modifier.height(12.dp))
+//                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+//                    listOf("Sen","Sel","Rab","Kam","Jum","Sab","Min").forEachIndexed { idx, nama ->
+//                        val dayName = listOf("MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY","SUNDAY")[idx]
+//                        val active = hari.contains(dayName)
+//                        Box(
+//                            modifier = Modifier
+//                                .size(32.dp)
+//                                .background(
+//                                    if (active) AccentCyan.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.05f),
+//                                    CircleShape
+//                                )
+//                                .border(1.dp, if (active) AccentCyan.copy(0.5f) else Color.Transparent, CircleShape),
+//                            contentAlignment = Alignment.Center
+//                        ) {
+//                            Text(nama, style = MaterialTheme.typography.labelSmall,
+//                                color = if (active) AccentCyan else TextSecondary,
+//                                fontWeight = if (active) FontWeight.Bold else FontWeight.Normal)
+//                        }
+//                    }
+//                }
+//            }
         }
     }
 }

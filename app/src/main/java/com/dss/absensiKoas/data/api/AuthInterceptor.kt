@@ -8,7 +8,7 @@ import javax.inject.Inject
 
 /**
  * Interceptor yang otomatis menambahkan header Authorization: Bearer {token}
- * dan X-Device-Info ke setiap request (kecuali login/registrasi).
+ * dan X-Device-Info ke setiap request (kecuali login/registrasi/refresh).
  */
 class AuthInterceptor @Inject constructor(
     private val tokenManager: TokenManager

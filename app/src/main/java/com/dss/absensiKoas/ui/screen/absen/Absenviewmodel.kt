@@ -147,9 +147,14 @@ class AbsenViewModel @Inject constructor(
             shiftDipilih = shift,
             errorMessage = null
         )
+        android.util.Log.d("SHIFT", "Dipilih = ${_state.value.shiftDipilih}")
     }
 
     fun lanjutDariPilihShift(jenisAbsen: JenisAbsen) {
+        android.util.Log.d(
+            "SHIFT",
+            "Sebelum lanjut = ${_state.value.shiftDipilih}"
+        )
         if (jenisAbsen == JenisAbsen.MASUK && _state.value.shiftDipilih == null) {
             _state.value = _state.value.copy(errorMessage = "Pilih shift terlebih dahulu")
             return

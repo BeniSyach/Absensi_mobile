@@ -10,6 +10,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.Login
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -174,7 +178,7 @@ private fun ShiftPickerScreen(
                             .background(Brush.linearGradient(listOf(PrimaryLight, AccentCyan)), CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.Login, null, tint = Color.White, modifier = Modifier.size(22.dp))
+                        Icon(Icons.AutoMirrored.Filled.Login, null, tint = Color.White, modifier = Modifier.size(22.dp))
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
@@ -296,7 +300,8 @@ private fun ShiftPickerScreen(
                     .padding(horizontal = 20.dp)
                     .height(56.dp),
                 icon = {
-                    Icon(Icons.Default.ArrowForward, null, tint = Color.White,
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowForward, null, tint = Color.White,
                         modifier = Modifier.size(20.dp))
                 }
             )
@@ -616,7 +621,7 @@ private fun AbsenMainScreen(
                             icon = {
                                 Icon(
                                     if (jenisAbsen == JenisAbsen.MASUK)
-                                        Icons.Default.Login else Icons.Default.Logout,
+                                        Icons.AutoMirrored.Filled.Login else Icons.AutoMirrored.Filled.Logout,
                                     null, tint = Color.White, modifier = Modifier.size(22.dp)
                                 )
                             }
@@ -629,7 +634,8 @@ private fun AbsenMainScreen(
                             onClick  = onKembali,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Icon(Icons.Default.ArrowBack, null,
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack, null,
                                 tint = TextSecondary, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text("Ambil Ulang Lokasi",
@@ -732,7 +738,7 @@ private fun AbsenHeader(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    if (jenisAbsen == JenisAbsen.MASUK) Icons.Default.Login else Icons.Default.Logout,
+                    if (jenisAbsen == JenisAbsen.MASUK) Icons.AutoMirrored.Filled.Login else Icons.AutoMirrored.Filled.Logout,
                     null, tint = Color.White, modifier = Modifier.size(22.dp)
                 )
             }

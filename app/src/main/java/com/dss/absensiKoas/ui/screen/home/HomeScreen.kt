@@ -6,6 +6,9 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Login
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -216,7 +219,7 @@ private fun HomeHeader(
                 Icon(Icons.Default.Refresh, contentDescription = null, tint = TextSecondary)
             }
             IconButton(onClick = onLogout) {
-                Icon(Icons.Default.Logout, contentDescription = null, tint = TextSecondary)
+                Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, tint = TextSecondary)
             }
         }
     }
@@ -249,8 +252,11 @@ private fun DateClockCard() {
                 fontWeight = FontWeight.Black
             )
             Text(
-                text = currentTime.format(
-                    DateTimeFormatter.ofPattern("EEEE, dd MMMM yyyy", Locale("id", "ID"))
+                        text = currentTime.format(
+                    DateTimeFormatter.ofPattern(
+                        "EEEE, dd MMMM yyyy",
+                        Locale.forLanguageTag("id-ID")
+                    )
                 ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = TextSecondary
@@ -297,7 +303,7 @@ private fun StatusTodayCard(uiState: HomeUiState) {
             Row(modifier = Modifier.fillMaxWidth()) {
                 StatusTimeBlock(
                     label = "Jam Masuk",
-                    icon = Icons.Default.Login,
+                    icon = Icons.AutoMirrored.Filled.Login,
                     iconColor = AccentGreen,
                     time = status?.waktuMasuk?.let { formatJam(it) },
                     statusText = status?.statusMasuk,
@@ -315,7 +321,7 @@ private fun StatusTodayCard(uiState: HomeUiState) {
 
                 StatusTimeBlock(
                     label = "Jam Pulang",
-                    icon = Icons.Default.Logout,
+                    icon = Icons.AutoMirrored.Filled.Logout,
                     iconColor = AccentAmber,
                     time = status?.waktuPulang?.let { formatJam(it) },
                     statusText = status?.statusPulang,
@@ -406,7 +412,7 @@ private fun AbsenButtonsSection(
             AbsenActionCard(
                 label = if (sudahMasuk) "Sudah Masuk" else "Absen Masuk",
                 subLabel = if (sudahMasuk) "✓ Tercatat" else "Tap untuk absen",
-                icon = if (sudahMasuk) Icons.Default.CheckCircle else Icons.Default.Login,
+                icon = if (sudahMasuk) Icons.Default.CheckCircle else Icons.AutoMirrored.Filled.Login,
                 gradient = if (sudahMasuk)
                     listOf(Color(0xFF134E4A), Color(0xFF065F46))
                 else
@@ -422,7 +428,7 @@ private fun AbsenButtonsSection(
                     !sudahMasuk  -> "Absen masuk dulu"
                     else         -> "Tap untuk absen"
                 },
-                icon = if (sudahPulang) Icons.Default.CheckCircle else Icons.Default.Logout,
+                icon = if (sudahPulang) Icons.Default.CheckCircle else Icons.AutoMirrored.Filled.Logout,
                 gradient = if (sudahPulang)
                     listOf(Color(0xFF134E4A), Color(0xFF065F46))
                 else
@@ -596,7 +602,7 @@ private fun LogoutConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = CardDark,
-        icon = { Icon(Icons.Outlined.Logout, null, tint = AccentRed) },
+        icon = { Icon(Icons.AutoMirrored.Outlined.Logout, null, tint = AccentRed) },
         title = { Text("Konfirmasi Logout", color = Color.White) },
         text = { Text("Yakin ingin keluar dari aplikasi?", color = TextSecondary) },
         confirmButton = {

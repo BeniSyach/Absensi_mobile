@@ -4,8 +4,10 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.location.Location
+import android.media.ExifInterface
 import com.dss.absensiKoas.data.api.AbsensiApi
 import com.dss.absensiKoas.data.model.*
+import android.graphics.Matrix
 import com.dss.absensiKoas.util.LocationHelper
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -181,21 +183,76 @@ class AbsensiRepository @Inject constructor(
         return MultipartBody.Part.createFormData(partName, "absen_${System.currentTimeMillis()}.jpg", requestBody)
     }
 
-    private fun compressImage(file: File, maxDimension: Int, quality: Int): ByteArray {
-        val options = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    private fun rotateBitmapIfNeeded(bitmap: Bitmap, file: File): Bitmap {
+        val exif = ExifInterface(file.absolutePath)
+
+        val orientation = exif.getAttributeInt(
+            ExifInterface.TAG_ORIENTATION,
+            ExifInterface.ORIENTATION_NORMAL
+        )
+
+        val matrix = Matrix()
+
+        when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+            ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+            ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+            else -> return bitmap
+        }
+
+        return Bitmap.createBitmap(
+            bitmap,
+            0,
+            0,
+            bitmap.width,
+            bitmap.height,
+            matrix,
+            true
+        )
+    }
+
+    private fun compressImage(
+        file: File,
+        maxDimension: Int,
+        quality: Int
+    ): ByteArray {
+
+        // Ambil ukuran asli
+        val options = BitmapFactory.Options().apply {
+            inJustDecodeBounds = true
+        }
         BitmapFactory.decodeFile(file.absolutePath, options)
 
+        // Hitung sample size
         var scale = 1
-        while (options.outWidth / scale > maxDimension || options.outHeight / scale > maxDimension) {
+        while (
+            options.outWidth / scale > maxDimension ||
+            options.outHeight / scale > maxDimension
+        ) {
             scale *= 2
         }
 
-        val decodeOptions = BitmapFactory.Options().apply { inSampleSize = scale }
-        val bitmap = BitmapFactory.decodeFile(file.absolutePath, decodeOptions)
+        // Decode bitmap
+        val decodeOptions = BitmapFactory.Options().apply {
+            inSampleSize = scale
+        }
+
+        var bitmap = BitmapFactory.decodeFile(file.absolutePath, decodeOptions)
+            ?: throw IllegalArgumentException("Gagal membaca gambar")
+
+        // Perbaiki orientasi EXIF
+        bitmap = rotateBitmapIfNeeded(bitmap, file)
 
         val outputStream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
+
+        bitmap.compress(
+            Bitmap.CompressFormat.JPEG,
+            quality,
+            outputStream
+        )
+
         bitmap.recycle()
+
         return outputStream.toByteArray()
     }
 

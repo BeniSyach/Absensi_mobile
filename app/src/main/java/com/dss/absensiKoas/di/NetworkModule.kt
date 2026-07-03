@@ -30,13 +30,7 @@ object NetworkModule {
         ignoreUnknownKeys = true
         isLenient = true
         coerceInputValues = true
-        encodeDefaults = true
     }
-
-    @Provides
-    @Singleton
-    @Named("BASE_URL")
-    fun provideBaseUrl(): String = BuildConfig.BASE_URL
 
     @Provides
     @Singleton
@@ -51,9 +45,13 @@ object NetworkModule {
     }
 
     /**
-     * Client khusus untuk refresh token.
-     * Tidak memakai AuthInterceptor maupun Authenticator
-     * agar tidak terjadi infinite loop.
+     * Client "polos" TANPA AuthInterceptor & TANPA TokenAuthenticator.
+     * Dipakai KHUSUS oleh TokenAuthenticator untuk memanggil endpoint
+     * /api/v1/auth/refresh secara manual.
+     *
+     * Wajib terpisah dari client utama — kalau dipakai bareng, saat refresh
+     * gagal authenticator akan terpanggil lagi untuk request refresh-nya
+     * sendiri -> infinite loop / stack overflow.
      */
     @Provides
     @Singleton
@@ -65,7 +63,6 @@ object NetworkModule {
             .addInterceptor(loggingInterceptor)
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
-            .writeTimeout(15, TimeUnit.SECONDS)
             .build()
     }
 
@@ -75,20 +72,26 @@ object NetworkModule {
         tokenManager: TokenManager,
         sessionManager: SessionManager,
         @Named("plain") plainClient: OkHttpClient,
-        @Named("BASE_URL") baseUrl: String,
         json: Json
     ): TokenAuthenticator {
         return TokenAuthenticator(
-            tokenManager = tokenManager,
-            sessionManager = sessionManager,
+            tokenManager      = tokenManager,
+            sessionManager    = sessionManager,
             plainOkHttpClient = plainClient,
-            baseUrl = baseUrl.trimEnd('/'),
-            json = json
+            baseUrl           = BuildConfig.BASE_URL.trimEnd('/'),
+            json              = json
         )
     }
 
     /**
-     * Client utama aplikasi.
+     * Client UTAMA yang dipakai Retrofit untuk semua request aplikasi.
+     * - addInterceptor(authInterceptor)   -> sisip header Authorization di setiap request
+     * - authenticator(tokenAuthenticator) -> otomatis coba refresh token saat dapat 401,
+     *   dan trigger "sesi habis" via SessionManager kalau refresh juga gagal
+     *
+     * Baris .authenticator(...) inilah yang HILANG di kode sebelumnya —
+     * tanpa baris ini, TokenAuthenticator yang sudah dibuat tidak akan pernah
+     * terpanggil sama sekali, sehingga fitur auto-refresh-token tidak berfungsi.
      */
     @Provides
     @Singleton
@@ -111,28 +114,23 @@ object NetworkModule {
     @Singleton
     fun provideRetrofit(
         okHttpClient: OkHttpClient,
-        json: Json,
-        @Named("BASE_URL") baseUrl: String
+        json: Json
     ): Retrofit {
 
-        android.util.Log.d("BASE_URL", baseUrl)
+        android.util.Log.d("BASE_URL", BuildConfig.BASE_URL)
 
         return Retrofit.Builder()
-            .baseUrl(baseUrl)
+            .baseUrl(BuildConfig.BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(
-                json.asConverterFactory(
-                    "application/json".toMediaType()
-                )
+                json.asConverterFactory("application/json".toMediaType())
             )
             .build()
     }
 
     @Provides
     @Singleton
-    fun provideAbsensiApi(
-        retrofit: Retrofit
-    ): AbsensiApi {
+    fun provideAbsensiApi(retrofit: Retrofit): AbsensiApi {
         return retrofit.create(AbsensiApi::class.java)
     }
 }

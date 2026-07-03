@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -197,7 +198,8 @@ fun LoginScreen(
                             isLoading = state.isLoading,
                             modifier = Modifier.fillMaxWidth(),
                             icon = {
-                                Icon(Icons.Default.Login, contentDescription = null,
+                                Icon(
+                                    Icons.AutoMirrored.Filled.Login, contentDescription = null,
                                     tint = Color.White, modifier = Modifier.size(20.dp))
                             }
                         )

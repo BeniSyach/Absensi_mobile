@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Warning
@@ -18,6 +19,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.dss.absensiKoas.data.model.AbsenRiwayatItem
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 private enum class TabRiwayat { MASUK, PULANG }
 
@@ -36,7 +38,10 @@ fun RiwayatScreen(
                 title = { Text("Riwayat Absensi") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Kembali")
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Kembali"
+                        )
                     }
                 }
             )
@@ -223,7 +228,7 @@ private fun formatTanggal(isoDateTime: String): String {
             .format(
                 DateTimeFormatter.ofPattern(
                     "EEEE, dd MMM yyyy",
-                    java.util.Locale("id", "ID")
+                    Locale.forLanguageTag("id-ID")
                 )
             )
     } catch (e: Exception) {

@@ -15,8 +15,8 @@ android {
         applicationId = "com.dss.absensiKoas"
         minSdk = 29
         targetSdk = 36
-        versionCode = 7
-        versionName = "7.0"
+        versionCode = 8
+        versionName = "8.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField("String", "BASE_URL_DEBUG", "\"http://10.0.2.2:8080/\"")
@@ -38,15 +38,15 @@ android {
         }
 
         release {
-            manifestPlaceholders += mapOf()
+            manifestPlaceholders += mapOf("usesCleartextTraffic" to "false")
             buildConfigField(
                 "String",
                 "BASE_URL",
                 "\"https://presensicoasrsudhat.deliserdangkab.go.id/api/\""
             )
-            manifestPlaceholders["usesCleartextTraffic"] = "false"
 
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

@@ -7,8 +7,7 @@ import com.dss.absensiKoas.data.model.LoginResponse
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import okhttp3.*
-import javax.inject.Inject
-import javax.inject.Singleton
+import okhttp3.RequestBody.Companion.toRequestBody
 
 /**
  * Authenticator dipanggil OkHttp SECARA OTOMATIS setiap kali response = 401.
@@ -24,13 +23,17 @@ import javax.inject.Singleton
  *                              return null (OkHttp berhenti retry, request asli tetap gagal)
  *
  * Catatan penting:
+ * - TIDAK pakai @Inject constructor di sini. Class ini dibuat secara manual
+ *   lewat @Provides fun provideTokenAuthenticator() di NetworkModule, karena
+ *   parameter baseUrl bertipe String polos — kalau dibiarkan @Inject otomatis,
+ *   Hilt akan bingung String binding mana yang harus dipakai (ambiguous binding)
+ *   bila ada String lain yang di-@Provides di tempat lain pada proyek ini.
  * - Authenticator dipanggil di thread OkHttp (bukan main thread) sehingga
  *   pemanggilan suspend function harus dibungkus runBlocking.
  * - responseCount dipakai untuk mencegah infinite retry loop jika
  *   token baru pun ternyata tetap ditolak server.
  */
-@Singleton
-class TokenAuthenticator @Inject constructor(
+class TokenAuthenticator(
     private val tokenManager: TokenManager,
     private val sessionManager: SessionManager,
     private val plainOkHttpClient: OkHttpClient, // client TANPA authenticator, hindari rekursi
@@ -83,10 +86,10 @@ class TokenAuthenticator @Inject constructor(
     private fun tryRefreshToken(refreshToken: String): String? {
         return try {
             val request = Request.Builder()
-                .url("$baseUrl/api/v1/auth/refresh")
-                .header("X-Refresh-Token", refreshToken)
-                .post(okhttp3.RequestBody.create(null, ByteArray(0)))
-                .build()
+            .url("$baseUrl/api/v1/auth/refresh")
+            .header("X-Refresh-Token", refreshToken)
+            .post(ByteArray(0).toRequestBody(null))
+            .build()
 
             val response = plainOkHttpClient.newCall(request).execute()
             response.use {
@@ -102,7 +105,7 @@ class TokenAuthenticator @Inject constructor(
     }
 
     private fun triggerSessionExpired() {
-        // Hapus token lokal secara síncron (blocking, aman karena bukan main thread)
+        // Hapus token lokal secara blocking (aman karena bukan main thread)
         runBlocking { tokenManager.clearSession() }
         sessionManager.notifySessionExpired()
     }

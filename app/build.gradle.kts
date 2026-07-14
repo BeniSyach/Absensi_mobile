@@ -9,12 +9,12 @@ plugins {
 
 android {
     namespace = "com.dss.absensiKoas"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.dss.absensiKoas"
         minSdk = 29
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 8
         versionName = "8.0"
 
@@ -64,10 +64,6 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
-    }
-
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.14"
     }
 
     packaging {

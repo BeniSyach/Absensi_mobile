@@ -1,15 +1,15 @@
 [versions]
 agp = "9.2.1"
-kotlin = "2.2.10"
-ksp = "2.2.10-2.0.2"
+kotlin = "2.2.21"
+ksp = "2.3.6"
 
 coreKtx = "1.13.1"
-activityCompose = "1.9.0"
-composeBom = "2024.06.00"
+activityCompose = "1.11.0"
+composeBom = "2026.01.00"
 navigationCompose = "2.9.8"
 lifecycle = "2.11.0"
 
-camera = "1.4.2"
+camera = "1.5.0"
 
 hilt = "2.60.1"
 hiltNavigationCompose = "1.4.0"
@@ -114,7 +114,6 @@ androidx-espresso-core = { module = "androidx.test.espresso:espresso-core", vers
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }

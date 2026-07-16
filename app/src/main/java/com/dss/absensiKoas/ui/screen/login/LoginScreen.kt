@@ -23,7 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.*
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.*
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.dss.absensiKoas.ui.component.*
 import com.dss.absensiKoas.ui.theme.*
 
@@ -132,7 +132,7 @@ fun LoginScreen(
                         ModernTextField(
                             value = state.username,
                             onValueChange = viewModel::onUsernameChange,
-                            label = "Username / NIP",
+                            label = "Username / NPM",
                             leadingIcon = Icons.Outlined.Person,
                             keyboardOptions = KeyboardOptions(
                                 imeAction = ImeAction.Next

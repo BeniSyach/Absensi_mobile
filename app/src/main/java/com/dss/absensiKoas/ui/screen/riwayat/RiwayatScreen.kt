@@ -15,11 +15,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.dss.absensiKoas.data.model.AbsenRiwayatItem
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import androidx.compose.material3.PrimaryTabRow
 
 private enum class TabRiwayat { MASUK, PULANG }
 
@@ -52,7 +53,7 @@ fun RiwayatScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            TabRow(selectedTabIndex = tab.ordinal) {
+            PrimaryTabRow(selectedTabIndex = tab.ordinal) {
                 Tab(
                     selected = tab == TabRiwayat.MASUK,
                     onClick = { tab = TabRiwayat.MASUK },

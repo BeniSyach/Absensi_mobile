@@ -14,11 +14,11 @@ android {
         applicationId = "com.dss.absensiKoas"
         minSdk = 29
         targetSdk = 37
-        versionCode = 9
-        versionName = "9.0"
+        versionCode = 10
+        versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "BASE_URL_DEBUG", "\"http://10.0.2.2:8080/\"")
+        buildConfigField("String", "BASE_URL_DEBUG", "\"http://10.10.16.21:8080/\"")
         buildConfigField("String", "BASE_URL_RELEASE", "\"https://presensicoasrsudhat.deliserdangkab.go.id/\"")
 
         // Google Maps API Key - diambil dari local.properties (jangan commit API key!)
@@ -31,7 +31,7 @@ android {
             buildConfigField(
                 "String",
                 "BASE_URL",
-                "\"http://172.100.20.4:8080/\""
+                "\"http://10.10.16.21:8080/\""
             )
             manifestPlaceholders["usesCleartextTraffic"] = "true"
         }

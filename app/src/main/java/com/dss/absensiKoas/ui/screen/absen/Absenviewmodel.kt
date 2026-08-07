@@ -7,6 +7,7 @@ import com.dss.absensiKoas.data.local.TokenManager
 import com.dss.absensiKoas.data.model.AbsenResponse
 import com.dss.absensiKoas.data.model.ShiftResponse
 import com.dss.absensiKoas.data.model.StatusHariIniResponse
+import com.dss.absensiKoas.data.model.WaktuKerjaResponse
 import com.dss.absensiKoas.data.repository.AbsensiRepository
 import com.dss.absensiKoas.data.repository.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -38,8 +39,8 @@ data class AbsenUiState(
 
 // ── Data shift ──
     val isLoadingShift: Boolean = false,
-    val daftarShift: List<ShiftResponse> = emptyList(),
-    val shiftDipilih: ShiftResponse? = null,     // shift yang dipilih user
+    val daftarShift: ShiftResponse? = null,
+    val waktuKerjaDipilih: WaktuKerjaResponse? = null,
 
 // ── Data lokasi ──
     val isLoadingLokasi: Boolean = false,
@@ -116,7 +117,7 @@ class AbsenViewModel @Inject constructor(
                     is Resource.Loading -> _state.value = _state.value.copy(isLoadingShift = true)
                     is Resource.Success -> _state.value = _state.value.copy(
                         isLoadingShift = false,
-                        daftarShift    = result.data
+                        daftarShift = result.data
                     )
                     is Resource.Error   -> _state.value = _state.value.copy(
                         isLoadingShift = false,
@@ -142,21 +143,28 @@ class AbsenViewModel @Inject constructor(
     // Absen pulang langsung ke step lokasi
     // ─────────────────────────────────────────────────────────────
 
-    fun pilihShift(shift: ShiftResponse) {
+    fun pilihWaktuKerja(
+        waktuKerja: WaktuKerjaResponse
+    ) {
         _state.value = _state.value.copy(
-            shiftDipilih = shift,
+            waktuKerjaDipilih = waktuKerja,
             errorMessage = null
         )
-        android.util.Log.d("SHIFT", "Dipilih = ${_state.value.shiftDipilih}")
+
+        android.util.Log.d(
+            "WAKTU_KERJA",
+            "Dipilih ID=${waktuKerja.id} ${waktuKerja.hari} ${waktuKerja.jamMasuk}"
+        )
     }
 
     fun lanjutDariPilihShift(jenisAbsen: JenisAbsen) {
+        val s = _state.value
         android.util.Log.d(
-            "SHIFT",
-            "Sebelum lanjut = ${_state.value.shiftDipilih}"
+            "WAKTU_KERJA",
+            "Sebelum lanjut = ${s.waktuKerjaDipilih}"
         )
-        if (jenisAbsen == JenisAbsen.MASUK && _state.value.shiftDipilih == null) {
-            _state.value = _state.value.copy(errorMessage = "Pilih shift terlebih dahulu")
+        if (jenisAbsen == JenisAbsen.MASUK && s.waktuKerjaDipilih == null) {
+            _state.value = _state.value.copy(errorMessage = "Pilih waktu kerja terlebih dahulu")
             return
         }
         // Langsung ambil lokasi di background, user ke step lokasi
@@ -289,6 +297,8 @@ class AbsenViewModel @Inject constructor(
     fun submitAbsenMasuk() {
         val s = _state.value
         if (!validasiSebelumSubmit(s)) return
+        val waktuKerja =
+            s.waktuKerjaDipilih ?: return
 
         val lokasiRequest = repository.toLokasiRequest(s.lokasiSaatIni!!)
 
@@ -297,9 +307,9 @@ class AbsenViewModel @Inject constructor(
 
             repository.absenMasuk(
                 fotoFile = s.fotoFile!!,
-                shiftId  = s.shiftDipilih!!.id,
-                lokasi   = lokasiRequest,
-                catatan  = s.catatan.ifBlank { null }
+                waktuKerjaId = waktuKerja.id.toLong(),
+                lokasi = lokasiRequest,
+                catatan = s.catatan.ifBlank { null }
             ).collect { result ->
                 handleResult(result)
             }
@@ -327,7 +337,7 @@ class AbsenViewModel @Inject constructor(
 
     private fun validasiSebelumSubmit(s: AbsenUiState, requireShift: Boolean = true): Boolean {
         return when {
-            requireShift && s.shiftDipilih == null -> {
+            requireShift && s.waktuKerjaDipilih == null -> {
                 _state.value = s.copy(errorMessage = "Pilih shift terlebih dahulu")
                 false
             }

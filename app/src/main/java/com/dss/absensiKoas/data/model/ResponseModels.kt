@@ -47,26 +47,53 @@ data class OpdResponse(
 // ── Shift ─────────────────────────────────────────────────
 @Serializable
 data class ShiftResponse(
-    val id: Long,
-    val nama: String,
-    val jamMasuk: String,        // "07:30"
-    val jamPulang: String,       // "16:00"
-    val toleransiTerlambat: Int? = 15,
-    val toleransiPulangAwal: Int? = 10,
-    val lintasHari: Boolean? = false,
-    val aktif: Boolean? = true
-) {
-    /** Label untuk ditampilkan di UI */
-    fun labelLengkap(): String {
-        val suffix = if (lintasHari == true) " (lintas hari 🌙)" else ""
-        return "$nama · $jamMasuk – $jamPulang$suffix"
-    }
 
-    /** Emoji berdasarkan jam masuk */
+    val id: Int,
+
+    val nama: String,
+
+    val aktif: Boolean,
+
+    val opdId: Int?,
+
+    val namaOpd: String?,
+
+    val waktuKerja: List<WaktuKerjaResponse>
+
+)
+
+
+@Serializable
+data class WaktuKerjaResponse(
+
+    val id: Int,
+
+    val hari: String,
+
+    val jamMasuk: String,
+
+    val jamPulang: String,
+
+    val toleransiTerlambat: Int,
+
+    val toleransiPulangAwal: Int,
+
+    val lintasHari: Boolean,
+
+    val aktif: Boolean
+
+){
     fun emoji(): String = when {
         jamMasuk >= "05:00" && jamMasuk < "11:00" -> "🌅"
         jamMasuk >= "11:00" && jamMasuk < "17:00" -> "☀️"
         else -> "🌙"
+    }
+
+
+
+    fun labelLengkap(): String {
+        val suffix = if (lintasHari == true) " (lintas hari 🌙)" else ""
+        return "$hari · $jamMasuk – $jamPulang$suffix"
     }
 }
 @Serializable
@@ -82,7 +109,7 @@ data class UserDetailResponse(
     val aktif: Boolean? = null,
     val deviceId: String? = null,
     val opd: OpdResponse? = null,
-    val shiftAktif: ShiftResponse? = null
+    val shift: ShiftResponse? = null
 )
 
 @Serializable

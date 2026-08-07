@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
+import android.os.Build
+import android.provider.Settings
 
 private val Context.dataStore by preferencesDataStore(name = "absensi_secure_prefs")
 
@@ -92,13 +94,12 @@ class TokenManager @Inject constructor(
     }
 
     suspend fun getOrCreateDeviceId(): String {
-        val existing = context.dataStore.data.map { it[Keys.DEVICE_ID] }.first()
-        if (existing != null) return existing
+        val androidId = Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.ANDROID_ID
+        )
 
-        val newId = "android-${android.os.Build.MODEL}-${java.util.UUID.randomUUID().toString().take(8)}"
-            .replace(" ", "_")
-        context.dataStore.edit { it[Keys.DEVICE_ID] = newId }
-        return newId
+        return "android-${Build.MODEL.replace(" ", "_")}-$androidId"
     }
 
     /**

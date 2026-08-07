@@ -25,12 +25,12 @@ interface AbsensiApi {
 
     // ── Shift: pegawai ambil daftar shift OPD-nya ────────────────
     /**
-     * Endpoint baru: GET /api/v1/absensi/shift/available
+     * Endpoint baru: GET /api/v1/absensi/shift
      * Mengembalikan shift aktif dari OPD user.
      * Tidak perlu parameter — server ambil dari JWT.
      */
-    @GET("api/v1/absensi/shift/available")
-    suspend fun getDaftarShift(): Response<ApiResponse<List<ShiftResponse>>>
+    @GET("api/v1/absensi/shift")
+    suspend fun getDaftarShift(): Response<ApiResponse<ShiftResponse>>
 
     // ============================
     // REGISTRASI & PROFIL USER

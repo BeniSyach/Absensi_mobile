@@ -38,7 +38,7 @@ import java.io.File
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.dss.absensiKoas.data.model.ShiftResponse
+import com.dss.absensiKoas.data.model.WaktuKerjaResponse
 
 @OptIn(ExperimentalPermissionsApi::class)
 @Composable
@@ -55,7 +55,6 @@ fun AbsenScreen(
         listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.CAMERA)
     )
 
-    // Saat pertama buka: minta izin, set visible untuk animasi
     LaunchedEffect(Unit) {
         visible = true
         if (!permissionsState.allPermissionsGranted) {
@@ -64,13 +63,9 @@ fun AbsenScreen(
     }
 
     LaunchedEffect(Unit) {
-        Log.d(
-            "SHIFT",
-            "MainScreen = ${state.shiftDipilih}"
-        )
+        Log.d("WAKTU_KERJA", "MainScreen = ${state.waktuKerjaDipilih}")
     }
 
-    // Layar kamera
     if (showCamera) {
         CameraCaptureScreen(
             onPhotoTaken = { file ->
@@ -82,20 +77,18 @@ fun AbsenScreen(
         return
     }
 
-    // Layar izin belum diberikan
     if (!permissionsState.allPermissionsGranted) {
         PermissionScreen(onRequest = { permissionsState.launchMultiplePermissionRequest() })
         return
     }
 
-    // Routing berdasarkan step ViewModel
     when (state.step) {
         AbsenStep.SUKSES -> {
             state.absenResult?.let { result ->
                 AbsenSuccessOverlay(
-                    result  = result,
+                    result     = result,
                     jenisAbsen = jenisAbsen,
-                    onDismiss = {
+                    onDismiss  = {
                         viewModel.resetAbsenResult()
                         onAbsenSukses()
                     }
@@ -103,43 +96,34 @@ fun AbsenScreen(
             }
         }
 
-        // Step pilih shift — HANYA untuk absen masuk
-        // Absen pulang langsung ke step lokasi (shift diambil dari absen masuk)
         AbsenStep.PILIH_SHIFT -> {
             if (jenisAbsen == JenisAbsen.MASUK) {
                 ShiftPickerScreen(
-                    state   = state,
-                    visible = visible,
-                    onPilih = { shift -> viewModel.pilihShift(shift) },
+                    state    = state,
+                    visible  = visible,
+                    onPilih  = { waktuKerja -> viewModel.pilihWaktuKerja(waktuKerja) },
                     onLanjut = { viewModel.lanjutDariPilihShift(jenisAbsen) },
-                    onRetry = { viewModel.muatDaftarShift() }
+                    onRetry  = { viewModel.muatDaftarShift() }
                 )
             } else {
-                Log.d(
-                    "SHIFT",
-                    "MainScreen = ${state.shiftDipilih}"
-                )
-                // Pulang: langsung ke lokasi
                 LaunchedEffect(Unit) { viewModel.mulaiAbsenPulang() }
                 LoadingFullScreen("Menyiapkan absen pulang...")
             }
         }
 
-        // Step lokasi, foto, konfirmasi, submit — screen utama
         else -> {
-
             AbsenMainScreen(
-                jenisAbsen  = jenisAbsen,
-                state       = state,
-                visible     = visible,
-                onRefreshLokasi = { viewModel.ambilLokasi() },
-                onLanjutFoto    = { viewModel.lanjutKeAmbilFoto() },
-                onAmbilFoto     = { showCamera = true },
+                jenisAbsen        = jenisAbsen,
+                state             = state,
+                visible           = visible,
+                onRefreshLokasi   = { viewModel.ambilLokasi() },
+                onLanjutFoto      = { viewModel.lanjutKeAmbilFoto() },
+                onAmbilFoto       = { showCamera = true },
                 onUlangiAmbilFoto = { viewModel.ulangiAmbilFoto() },
-                onKembali        = { viewModel.kembaliKeLokasi() },
-                onCatatanChange  = { viewModel.setCatatan(it) },
-                onSubmitMasuk    = { viewModel.submitAbsenMasuk() },
-                onSubmitPulang   = { viewModel.submitAbsenPulang() }
+                onKembali         = { viewModel.kembaliKeLokasi() },
+                onCatatanChange   = { viewModel.setCatatan(it) },
+                onSubmitMasuk     = { viewModel.submitAbsenMasuk() },
+                onSubmitPulang    = { viewModel.submitAbsenPulang() }
             )
         }
     }
@@ -153,17 +137,21 @@ fun AbsenScreen(
 private fun ShiftPickerScreen(
     state: AbsenUiState,
     visible: Boolean,
-    onPilih: (ShiftResponse) -> Unit,
+    onPilih: (WaktuKerjaResponse) -> Unit,
     onLanjut: () -> Unit,
     onRetry: () -> Unit
 ) {
+    // ⚠️ PENTING: Ekstrak list dari dalam objek ShiftResponse.
+    // Ganti '.data' di bawah ini dengan nama properti list yang ada di data class ShiftResponse Anda
+    // (misalnya: .waktuKerja, .items, .results, atau .list)
+    val listWaktuKerja = state.daftarShift?.waktuKerja ?: emptyList()
+
     AnimatedGradientBackground {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .navigationBarsPadding()
         ) {
-            // Header
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -225,7 +213,6 @@ private fun ShiftPickerScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Daftar shift
             when {
                 state.isLoadingShift -> {
                     repeat(3) {
@@ -238,7 +225,7 @@ private fun ShiftPickerScreen(
                     }
                 }
 
-                state.daftarShift.isEmpty() -> {
+                listWaktuKerja.isEmpty() -> {
                     Column(
                         modifier = Modifier.fillMaxWidth().padding(40.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
@@ -260,18 +247,17 @@ private fun ShiftPickerScreen(
                         contentPadding = PaddingValues(horizontal = 20.dp, vertical = 4.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        items(state.daftarShift) { shift ->
+                        items(listWaktuKerja) { waktuKerja ->
                             ShiftItemCard(
-                                shift    = shift,
-                                dipilih  = state.shiftDipilih?.id == shift.id,
-                                onClick  = { onPilih(shift) }
+                                waktuKerja = waktuKerja,
+                                dipilih    = state.waktuKerjaDipilih?.id == waktuKerja.id,
+                                onClick    = { onPilih(waktuKerja) }
                             )
                         }
                     }
                 }
             }
 
-            // Error message
             state.errorMessage?.let { error ->
                 Row(
                     modifier = Modifier
@@ -289,12 +275,11 @@ private fun ShiftPickerScreen(
                 }
             }
 
-            // Tombol lanjut
             Spacer(modifier = Modifier.height(12.dp))
             GradientButton(
                 text = "Lanjut Absen Masuk",
                 onClick = onLanjut,
-                enabled = state.shiftDipilih != null,
+                enabled = state.waktuKerjaDipilih != null,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
@@ -311,12 +296,12 @@ private fun ShiftPickerScreen(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SHIFT ITEM CARD — tampilan satu shift di daftar pilihan
+// SHIFT ITEM CARD
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
 private fun ShiftItemCard(
-    shift: ShiftResponse,
+    waktuKerja: WaktuKerjaResponse,
     dipilih: Boolean,
     onClick: () -> Unit
 ) {
@@ -351,8 +336,6 @@ private fun ShiftItemCard(
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-
-            // Emoji & radio indicator
             Box(
                 modifier = Modifier
                     .size(48.dp)
@@ -363,7 +346,7 @@ private fun ShiftItemCard(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    shift.emoji(),
+                    waktuKerja.emoji(),
                     style = MaterialTheme.typography.headlineSmall
                 )
             }
@@ -373,13 +356,12 @@ private fun ShiftItemCard(
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        shift.nama,
+                        waktuKerja.hari,
                         style = MaterialTheme.typography.titleMedium,
                         color = if (dipilih) AccentCyan else Color.White,
                         fontWeight = FontWeight.Bold
                     )
-                    // Badge lintas hari
-                    if (shift.lintasHari == true) {
+                    if (waktuKerja.lintasHari == true) {
                         Spacer(modifier = Modifier.width(8.dp))
                         Box(
                             modifier = Modifier
@@ -399,29 +381,26 @@ private fun ShiftItemCard(
 
                 Spacer(modifier = Modifier.height(4.dp))
 
-                // Jam masuk → jam pulang
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Outlined.Schedule, null, tint = TextSecondary,
                         modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        "${shift.jamMasuk}  →  ${shift.jamPulang}",
+                        "${waktuKerja.jamMasuk}  →  ${waktuKerja.jamPulang}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = TextSecondary,
                         fontWeight = FontWeight.Medium
                     )
                 }
 
-                // Toleransi
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    "Toleransi terlambat: ${shift.toleransiTerlambat ?: 15} menit",
+                    "Toleransi terlambat: ${waktuKerja.toleransiTerlambat ?: 15} menit",
                     style = MaterialTheme.typography.bodySmall,
                     color = TextSecondary.copy(alpha = 0.7f)
                 )
             }
 
-            // Checkmark jika dipilih
             AnimatedVisibility(
                 visible = dipilih,
                 enter = fadeIn() + scaleIn(),
@@ -444,7 +423,7 @@ private fun ShiftItemCard(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// STEP 2-4 — SCREEN UTAMA (Lokasi, Foto, Konfirmasi)
+// STEP 2-4 — SCREEN UTAMA
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
@@ -468,19 +447,16 @@ private fun AbsenMainScreen(
                 .verticalScroll(rememberScrollState())
                 .navigationBarsPadding()
         ) {
-            // ── Header ──
             AbsenHeader(jenisAbsen = jenisAbsen, visible = visible, state = state)
 
-            // ── Shift yang dipilih (hanya masuk) ──
-            if (jenisAbsen == JenisAbsen.MASUK && state.shiftDipilih != null) {
+            if (jenisAbsen == JenisAbsen.MASUK && state.waktuKerjaDipilih != null) {
                 AnimatedVisibility(visible = visible,
                     enter = fadeIn(tween(400, 150)) + slideInVertically(tween(400, 150)) { it / 3 }) {
-                    ShiftDipilihBadge(shift = state.shiftDipilih)
+                    WaktuKerjaDipilihBadge(waktuKerja = state.waktuKerjaDipilih!!)
                 }
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
-            // ── Maps & Lokasi ──
             AnimatedVisibility(visible = visible,
                 enter = fadeIn(tween(600, 200)) + slideInVertically(tween(600, 200)) { it / 3 }) {
                 MapsLocationCard(
@@ -491,7 +467,6 @@ private fun AbsenMainScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // ── Tombol Lanjut ke Foto (hanya di step AMBIL_LOKASI) ──
             if (state.step == AbsenStep.AMBIL_LOKASI) {
                 AnimatedVisibility(visible = visible,
                     enter = fadeIn(tween(400, 350))) {
@@ -518,7 +493,6 @@ private fun AbsenMainScreen(
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
-            // ── Radius Status Bar ──
             if (state.lokasiSaatIni != null) {
                 AnimatedVisibility(visible = visible, enter = fadeIn(tween(400, 400))) {
                     RadiusStatusBar(uiState = state)
@@ -526,7 +500,6 @@ private fun AbsenMainScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // ── Foto Card (tampil di step AMBIL_FOTO / KONFIRMASI / SUBMIT) ──
             if (state.step in listOf(
                     AbsenStep.AMBIL_FOTO,
                     AbsenStep.KONFIRMASI,
@@ -543,7 +516,6 @@ private fun AbsenMainScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // ── Catatan (hanya di konfirmasi) ──
             if (state.step == AbsenStep.KONFIRMASI) {
                 AnimatedVisibility(visible = visible,
                     enter = fadeIn(tween(400, 250)) + slideInVertically(tween(400, 250)) { it / 3 }) {
@@ -578,7 +550,6 @@ private fun AbsenMainScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // ── Error ──
             state.errorMessage?.let { error ->
                 Row(
                     modifier = Modifier
@@ -597,7 +568,6 @@ private fun AbsenMainScreen(
                 Spacer(modifier = Modifier.height(12.dp))
             }
 
-            // ── Tombol Submit (hanya di KONFIRMASI atau SUBMIT) ──
             if (state.step in listOf(AbsenStep.KONFIRMASI, AbsenStep.SUBMIT)) {
                 val gradientColors = if (jenisAbsen == JenisAbsen.MASUK)
                     listOf(PrimaryLight, AccentCyan)
@@ -629,7 +599,6 @@ private fun AbsenMainScreen(
 
                         Spacer(modifier = Modifier.height(10.dp))
 
-                        // Tombol kembali ke lokasi
                         TextButton(
                             onClick  = onKembali,
                             modifier = Modifier.fillMaxWidth()
@@ -645,7 +614,6 @@ private fun AbsenMainScreen(
                 }
             }
 
-            // Hint ketika foto belum diambil di step AMBIL_FOTO
             if (state.step == AbsenStep.AMBIL_FOTO && state.fotoFile == null) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -663,11 +631,11 @@ private fun AbsenMainScreen(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SHIFT DIPILIH BADGE — tampil setelah shift dipilih
+// WAKTU KERJA DIPILIH BADGE
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Composable
-private fun ShiftDipilihBadge(shift: ShiftResponse) {
+private fun WaktuKerjaDipilihBadge(waktuKerja: WaktuKerjaResponse) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -678,16 +646,16 @@ private fun ShiftDipilihBadge(shift: ShiftResponse) {
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(shift.emoji(), style = MaterialTheme.typography.titleSmall)
+        Text(waktuKerja.emoji(), style = MaterialTheme.typography.titleSmall)
         Spacer(modifier = Modifier.width(8.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                "${shift.nama} · ${shift.jamMasuk} – ${shift.jamPulang}",
+                "${waktuKerja.hari} · ${waktuKerja.jamMasuk} – ${waktuKerja.jamPulang}",
                 style     = MaterialTheme.typography.bodyMedium,
                 color     = AccentCyan,
                 fontWeight = FontWeight.Bold
             )
-            if (shift.lintasHari == true) {
+            if (waktuKerja.lintasHari == true) {
                 Text("Shift lintas hari — absen pulang bisa esok hari",
                     style = MaterialTheme.typography.bodySmall,
                     color = AccentAmber)
@@ -760,7 +728,6 @@ private fun AbsenHeader(
                 )
             }
 
-            // Indikator step di kanan
             Spacer(modifier = Modifier.weight(1f))
             StepIndicator(step = state.step, jenisAbsen = jenisAbsen)
         }
@@ -868,7 +835,6 @@ fun MapsLocationCard(
                 }
             }
 
-            // Google Maps
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -916,7 +882,6 @@ fun MapsLocationCard(
                         )
                     }
 
-                    // Koordinat overlay
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomStart)
@@ -932,7 +897,6 @@ fun MapsLocationCard(
                         )
                     }
 
-                    // Badge fake GPS
                     if (uiState.mockLocationTerdeteksi) {
                         Box(
                             modifier = Modifier
@@ -1310,7 +1274,6 @@ private fun AbsenSuccessOverlay(
                     textAlign = TextAlign.Center
                 )
 
-                // Info shift
                 result.shiftNama?.let { nama ->
                     Spacer(modifier = Modifier.height(8.dp))
                     Box(

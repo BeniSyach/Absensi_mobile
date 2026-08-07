@@ -1,6 +1,5 @@
 package com.dss.absensiKoas.data.repository
 
-import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.location.Location
@@ -11,12 +10,9 @@ import android.graphics.Matrix
 import com.dss.absensiKoas.util.LocationHelper
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
-import okhttp3.RequestBody
-import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -48,14 +44,25 @@ class AbsensiRepository @Inject constructor(
 
     // ── Shift: ambil daftar shift OPD user ────────────────────────
 
-    fun getDaftarShift(): Flow<Resource<List<ShiftResponse>>> = flow {
+    fun getDaftarShift(): Flow<Resource<ShiftResponse>> = flow {
         emit(Resource.Loading)
+
         try {
             val response = api.getDaftarShift()
-            if (response.isSuccessful && response.body()?.success == true) {
-                emit(Resource.Success(response.body()!!.data ?: emptyList()))
+            val body = response.body()
+
+            if (response.isSuccessful && body?.success == true) {
+                body.data?.let { shift ->
+
+                    emit(
+                        Resource.Success(shift)
+                    )
+
+                } ?: emit(
+                    Resource.Error("Data shift kosong")
+                )
             } else {
-                emit(Resource.Error(response.body()?.error ?: "Gagal memuat daftar shift"))
+                emit(Resource.Error(body?.error ?: body?.message ?: "Gagal memuat daftar shift"))
             }
         } catch (e: Exception) {
             emit(Resource.Error(mapException(e)))
@@ -68,7 +75,7 @@ class AbsensiRepository @Inject constructor(
      */
     fun absenMasuk(
         fotoFile: File,
-        shiftId: Long,
+        waktuKerjaId: Long,
         lokasi: LokasiRequest,
         catatan: String? = null
     ): Flow<Resource<AbsenResponse>> = flow {
@@ -77,7 +84,7 @@ class AbsensiRepository @Inject constructor(
             val fotoPart = buildFotoPart(fotoFile, "foto")
             val dataJson = json.encodeToString(
                 AbsenRequestData(
-                    shiftId = shiftId,
+                    waktuKerjaId = waktuKerjaId,
                     lokasi = lokasi,
                     catatan = catatan
                 )
@@ -109,7 +116,7 @@ class AbsensiRepository @Inject constructor(
             val fotoPart = buildFotoPart(fotoFile, "foto")
             val dataJson = json.encodeToString(
                 AbsenRequestData(
-                    shiftId = null,
+                    waktuKerjaId = null,
                     lokasi = lokasi,
                     catatan = catatan
                 )
